@@ -9,7 +9,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: manipulation; }
         body { background: #0a1f0a; color: white; display: flex; flex-direction: column; min-height: 100vh; height: 100vh; overflow: hidden; }
 
-        /* 101 OKEY PLUS YEŞİL ÇUHA MASA DOKUSU */
         .masa-container { 
             flex: 1; 
             display: flex; 
@@ -22,16 +21,13 @@
             box-shadow: inset 0 0 80px rgba(0,0,0,0.8);
         }
         
-        /* RAKİP PANELLERİ */
         .rakipler-alan { display: flex; justify-content: space-around; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 10px; font-size: 12px; border: 1px solid rgba(255,255,255,0.1); }
         .rakip-kutu { background: rgba(18, 51, 18, 0.8); border: 1px solid #2e7d32; padding: 4px 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         .rakip-kutu.aktif { border: 2px solid #ffeb3b; box-shadow: 0 0 12px #ffeb3b; background: rgba(30, 77, 30, 0.9); }
 
-        /* ORTA MASA ALANI */
         .orta-masa { display: flex; justify-content: space-around; align-items: center; background: rgba(0,0,0,0.35); border: 2px solid #143d14; border-radius: 15px; padding: 10px; flex-wrap: wrap; gap: 8px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
         .deste-alan, .gosterge-alan, .atilan-alan { background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 8px; text-align: center; font-size: 11px; border: 1px solid rgba(255, 179, 0, 0.3); }
         
-        /* OYUNCU ALANI VE KONTROLLER */
         .oyuncu-alan { background: #180d05; border-top: 3px solid #ffb300; padding: 8px; border-radius: 12px 12px 0 0; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 -5px 20px rgba(0,0,0,0.7); }
         .istaka-kontrol { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; }
         
@@ -40,7 +36,6 @@
         .secili-badge { background: #0288d1; color: #fff; padding: 4px 8px; border-radius: 5px; font-weight: bold; transition: background 0.3s; font-size: 11px; }
         .secili-badge.hazir { background: #2e7d32 !important; box-shadow: 0 0 10px #4caf50; }
 
-        /* PLUS GERÇEKÇİ AHŞAP ISTAKA */
         .istaka-ve-atma-container { display: flex; gap: 8px; align-items: center; width: 100%; }
 
         .ahsap-istaka {
@@ -78,7 +73,6 @@
             flex-shrink: 0;
         }
 
-        /* PLUS TAŞ TASARIMI */
         .tas {
             width: 100%;
             height: 100%;
@@ -127,7 +121,6 @@
         .sari { color: #f57f17; }
         .sahte { color: #7b1fa2; }
 
-        /* SAĞ TAŞ ATMA KUTUSU */
         .sag-tas-atma-alani {
             width: 80px;
             height: 118px;
@@ -361,7 +354,6 @@
         }
     }
 
-    // ISTAKADAKİ YAN YANA TAŞ GRUPLARINI AYIRMA
     function getIstakaGruplari() {
         let gruplar = [];
         let mevcutGrup = [];
@@ -386,52 +378,47 @@
         return gruplar;
     }
 
-    // BİR TAŞ GRUBUNUN GEÇERLİ BİR PER OLUP OLMADIĞINI KONTROL EDEN MOTOR
+    // TAM ESNEK OKEY/JOKER DESTEKLİ PER KONTROLÜ
     function isGecerliPer(grup) {
         if (!grup || grup.length < 3) return false;
 
-        let sanalGrup = grup.map(t => {
-            if (isOkey(t)) return { ...t, isJoker: true };
-            return { ...t, isJoker: false };
-        });
+        let normalTaslar = grup.filter(t => !isOkey(t));
+        
+        // Gruptaki tüm taşlar Okey ise otomatik olarak geçerli gruptur
+        if (normalTaslar.length === 0) return true;
 
-        // 1. KONTROL: SERİ PER KONTROLÜ (Aynı renk, ardışık sayılar: örn Kırmızı 5-6-7)
-        let ayniRenkMi = true;
-        let sabitRenk = sanalGrup.find(t => !t.isJoker)?.renk;
-        if (sabitRenk) {
-            ayniRenkMi = sanalGrup.every(t => t.isJoker || t.renk === sabitRenk);
-        }
+        // 1. KONTROL: GRUP (Farklı Renkler, Aynı Sayı)
+        let hedefSayi = normalTaslar[0].sayi;
+        let hepsiAyniSayi = normalTaslar.every(t => t.sayi === hedefSayi);
 
-        if (ayniRenkMi) {
-            let seriGecerli = true;
-            for (let i = 0; i < sanalGrup.length - 1; i++) {
-                let curr = sanalGrup[i];
-                let next = sanalGrup[i+1];
-                if (!curr.isJoker && !next.isJoker) {
-                    if (next.sayi !== curr.sayi + 1 && !(curr.sayi === 13 && next.sayi === 1)) {
-                        seriGecerli = false;
-                        break;
-                    }
-                }
-            }
-            if (seriGecerli) return true;
-        }
-
-        // 2. KONTROL: GRUP PER KONTROLÜ (Farklı renkler, aynı sayı: örn Kırmızı 8, Mavi 8, Siyah 8)
-        let sabitSayi = sanalGrup.find(t => !t.isJoker)?.sayi;
-        if (sabitSayi) {
-            let ayniSayiMi = sanalGrup.every(t => t.isJoker || t.sayi === sabitSayi);
-            if (ayniSayiMi) {
-                let renkler = sanalGrup.filter(t => !t.isJoker).map(t => t.renk);
-                let benzersizRenkler = new Set(renkler);
-                if (benzersizRenkler.size === renkler.length) return true;
+        if (hepsiAyniSayi) {
+            let renkler = normalTaslar.map(t => t.renk);
+            let benzersizRenkler = new Set(renkler);
+            if (benzersizRenkler.size === normalTaslar.length && grup.length <= 4) {
+                return true;
             }
         }
 
-        // 3. KONTROL: ÇİFT PER KONTROLÜ (Aynı renk aynı sayı 2'li çiftler)
-        if (grup.length === 2) {
-            let t1 = grup[0], t2 = grup[1];
-            if ((t1.renk === t2.renk && t1.sayi === t2.sayi) || isOkey(t1) || isOkey(t2)) return true;
+        // 2. KONTROL: SERİ (Aynı Renk, Ardışık Sıralama)
+        let hedefRenk = normalTaslar[0].renk;
+        let hepsiAyniRenk = normalTaslar.every(t => t.renk === hedefRenk);
+
+        if (hepsiAyniRenk) {
+            let sayilar = normalTaslar.map(t => t.sayi).sort((a, b) => a - b);
+            
+            // 13 -> 1 Bağlanma Özel Durumu
+            if (sayilar.includes(13) && sayilar.includes(1)) {
+                sayilar = sayilar.map(s => s === 1 ? 14 : s).sort((a, b) => a - b);
+            }
+
+            let minSayi = sayilar[0];
+            let maxSayi = sayilar[sayilar.length - 1];
+            let fark = maxSayi - minSayi;
+
+            // Okey/Joker taşları boşlukları kapatabildiği için aralık grup boyutuna sığıyorsa geçerlidir
+            if (fark < grup.length) {
+                return true;
+            }
         }
 
         return false;
@@ -443,7 +430,6 @@
         return t.sayi;
     }
 
-    // YALNIZCA KURALA UYAN PERLERİN PUANINI SAYAN GELİŞMİŞ PUAN MOTORU
     function puanlariHesapla() {
         if (benimKoltugum === -1 || !state || !state.oyuncular[benimKoltugum]) return;
         let benimTaslar = state.oyuncular[benimKoltugum].taslar;
@@ -455,13 +441,11 @@
         let toplamPerPuani = 0;
 
         if (seciliIndices.length > 0) {
-            // Manuel seçim varsa seçilen grubu kontrol et
             let seciliTaslar = seciliIndices.map(id => benimTaslar.find(x => x.id === id)).filter(Boolean);
             if (isGecerliPer(seciliTaslar)) {
                 seciliTaslar.forEach(t => toplamPerPuani += getTasPuan(t));
             }
         } else {
-            // Istakadaki yan yana dizilmiş grupları tara, SADECE GEÇERLİ PERLERİ TOPLA
             let gruplar = getIstakaGruplari();
             gruplar.forEach(grup => {
                 if (isGecerliPer(grup)) {
@@ -619,6 +603,7 @@
         tasIstakaIslemAt(tasId);
     }
 
+    // ARADA GEÇERSİZ TAŞLAR OLSA BİLE GEÇERLİ PERLERİ AYIKLAYIP AÇAN FONKSİYON
     function perAc() {
         let acilacakTaslar = [];
 
@@ -630,14 +615,16 @@
                 if (isGecerliPer(grup)) {
                     grup.forEach(t => {
                         let idx = state.oyuncular[benimKoltugum].taslar.findIndex(x => x.id === t.id);
-                        if (idx !== -1) acilacakTaslar.push(idx);
+                        if (idx !== -1 && !acilacakTaslar.includes(idx)) {
+                            acilacakTaslar.push(idx);
+                        }
                     });
                 }
             });
         }
 
         if (acilacakTaslar.length < 3) {
-            alert("Açılacak geçerli bir per bulunamadı! Taşların kurallara uygun seri veya grup oluşturduğundan emin ol.");
+            alert("Açılacak geçerli bir per bulunamadı!");
             return;
         }
 
