@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>101 Okey Plus - Akıllı Per Tespiti</title>
+    <title>101 Okey Plus - Hata Düzeltildi</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; user-select: none; }
@@ -165,31 +165,42 @@
         return tas.sayi;
     }
 
+    // DÜZELTİLMİŞ PER GEÇERLİLİK KONTROLÜ (AYNI SAYI TEKRARINI KABUL ETMEYEN KONTROL)
     function isGecerliPer(grup) {
         if (!grup || grup.length < 3) return false;
         let normal = grup.filter(t => t.sayi !== 0 && !isOkey(t));
         if (normal.length === 0) return true;
 
+        // 1. Durum: Aynı sayılar farklı renkler (Örn: 7-7-7)
         let hedefSayi = normal[0].sayi;
         if (normal.every(t => t.sayi === hedefSayi)) {
             let benzersizRenkler = new Set(normal.map(t => t.renk));
             if (benzersizRenkler.size === normal.length && grup.length <= 4) return true;
         }
 
+        // 2. Durum: Aynı renk ardışık sayılar (Örn: 1-2-3-4)
         let hedefRenk = normal[0].renk;
         if (normal.every(t => t.renk === hedefRenk)) {
             let sayilar = normal.map(t => t.sayi).sort((a, b) => a - b);
+            
+            // Eğer aynı renk ve sayıdan birden fazla varsa geçersizdir (1-2-2 engellendi)
+            let benzersizSayilar = new Set(sayilar);
+            if (benzersizSayilar.size !== sayilar.length) return false;
+
+            // 12-13-1 İstisnai Seri Kontrolü
             if (sayilar.includes(13) && sayilar.includes(1)) {
                 sayilar = sayilar.map(s => s === 1 ? 14 : s).sort((a, b) => a - b);
             }
-            let min = sayilar[0];
-            let max = sayilar[sayilar.length - 1];
-            if ((max - min) < grup.length) return true;
+
+            // Ardışık sayıların sırayla +1 artıp artmadığı kontrol edilir
+            for (let i = 0; i < sayilar.length - 1; i++) {
+                if (sayilar[i + 1] - sayilar[i] !== 1) return false;
+            }
+            return true;
         }
         return false;
     }
 
-    // ISTAKADAKİ PERLERİ OTOMATİK TESPİT ETME MANTIĞI
     function getIstakadakiPerler() {
         let perler = [];
         let satirlar = [localIstaka.slice(0, 18), localIstaka.slice(18, 36)];
@@ -318,7 +329,6 @@
         canliPuanHesapla();
     }
 
-    // OTOMATİK SERİ AÇMA
     function otomatikPerAc() {
         let perler = getIstakadakiPerler();
         if (perler.length === 0) {
@@ -330,7 +340,6 @@
         socket.emit('seriAc', { pIdx: benimKoltugum, perGruplari: perGruplari });
     }
 
-    // OTOMATİK ÇİFT AÇMA
     function otomatikCiftAc() {
         let taslar = state.oyuncular[benimKoltugum].taslar;
         let ciftGruplari = [];
@@ -373,6 +382,7 @@
         }
     }
 
+    // DÜZELTİLMİŞ SERİ DİZME MANTIĞI (1-2-2 İKİZ TAŞLARINI BOŞLUKLA AYIRIR)
     function seriDiz() {
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
@@ -390,7 +400,9 @@
             if (i < taslar.length - 1) {
                 let suanki = taslar[i];
                 let sonraki = taslar[i+1];
-                if (suanki.renk !== sonraki.renk || (sonraki.sayi - suanki.sayi > 1)) {
+
+                // Eğer renk farklıysa VEYA ardışık değilse VEYA aynı sayı/renkten 2. taş geldiyse (1-2-2) BOŞLUK BIRAK
+                if (suanki.renk !== sonraki.renk || (sonraki.sayi - suanki.sayi !== 1)) {
                     cursor++; 
                 }
             }
