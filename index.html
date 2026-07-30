@@ -342,6 +342,55 @@
         socket.emit('seriAc', { pIdx: benimKoltugum, perGruplari: perGruplari });
     }
 
+    // OKEY/JOKER DESTEKLİ ÇİFT AÇMA
+    function otomatikCiftAc() {
+        let taslar = [...state.oyuncular[benimKoltugum].taslar];
+        let ciftGruplari = [];
+        let visited = new Set();
+
+        for (let i = 0; i < taslar.length; i++) {
+            if (visited.has(i)) continue;
+            for (let j = i + 1; j < taslar.length; j++) {
+                if (!visited.has(j) && !isJoker(taslar[i]) && !isJoker(taslar[j])) {
+                    if (taslar[i].renk === taslar[j].renk && taslar[i].sayi === taslar[j].sayi) {
+                        ciftGruplari.push([taslar[i].id, taslar[j].id]);
+                        visited.add(i); visited.add(j);
+                        break;
+                    }
+                }
+            }
+        }
+
+        let kalanTekliler = [];
+        let jokerler = [];
+
+        for (let i = 0; i < taslar.length; i++) {
+            if (!visited.has(i)) {
+                if (isJoker(taslar[i])) jokerler.push(taslar[i]);
+                else kalanTekliler.push(taslar[i]);
+            }
+        }
+
+        while (jokerler.length > 0 && kalanTekliler.length > 0) {
+            let j = jokerler.pop();
+            let t = kalanTekliler.pop();
+            ciftGruplari.push([t.id, j.id]);
+        }
+
+        while (jokerler.length >= 2) {
+            let j1 = jokerler.pop();
+            let j2 = jokerler.pop();
+            ciftGruplari.push([j1.id, j2.id]);
+        }
+
+        if (ciftGruplari.length < 5 && !state.oyuncular[benimKoltugum].elAcaliMi) {
+            alert(`En az 5 ÇİFT gerekli! Sende şu an Okeyler dahil ${ciftGruplari.length} çift var.`);
+            return;
+        }
+
+        socket.emit('ciftAc', { pIdx: benimKoltugum, ciftGruplari: ciftGruplari });
+    }
+
     function tasAt() {
         if (!seciliAtilacakTasId) { 
             alert("Atmak istediğin taşın üzerine 1 kere tıklamalısın!"); 
