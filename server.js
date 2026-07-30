@@ -4,42 +4,44 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server);
 
 app.use(express.static(__dirname));
 
+// OYUN DURUMU (STATE)
 let gameState = {
     oyuncular: [
-        { id: null, isim: "Oyuncu 1", taslar: [], acilanSeriler: [], acilanCiftler: [], acilanPuan: 0, ceza: 0 },
-        { id: null, isim: "Oyuncu 2", taslar: [], acilanSeriler: [], acilanCiftler: [], acilanPuan: 0, ceza: 0 },
-        { id: null, isim: "Oyuncu 3", taslar: [], acilanSeriler: [], acilanCiftler: [], acilanPuan: 0, ceza: 0 }
+        { id: null, isim: "Oyuncu 1", taslar: [], ceza: 0, acilanPuan: 0, elAcaliMi: false },
+        { id: null, isim: "Oyuncu 2", taslar: [], ceza: 0, acilanPuan: 0, elAcaliMi: false },
+        { id: null, isim: "Oyuncu 3", taslar: [], ceza: 0, acilanPuan: 0, elAcaliMi: false }
     ],
     deste: [],
-    gosterge: null,
     okey: null,
+    gosterge: null,
     aktifOyuncu: 0,
-    tasCekildiMi: false,
-    yandanTasAlindiMi: false,
     sonAtilanTas: null,
-    sonTasiAtanOyuncu: null,
-    mevcutSeriBaraji: 101,
-    mevcutCiftBaraji: 5,
-    oyunBasladi: false
+    enYuksekAcilanPuan: 100, // Katlamalı için baraj (İlk açan min 101)
+    oyunBasladi: false,
+    tasCekildiMi: false
 };
 
+// DESTE VE TAS OLUSTURMA
 function desteOlustur() {
+    let renkler = ['kirmizi', 'siyah', 'mavi', 'sari'];
     let deste = [];
-    let renklers = ['kirmizi', 'siyah', 'mavi', 'sari'];
-    let id = 1;
-    renklers.forEach(renk => {
-        for (let sayi = 1; sayi <= 13; sayi++) {
-            deste.push({ id: id++, renk, sayi });
-            deste.push({ id: id++, renk, sayi });
-        }
-    });
-    deste.push({ id: id++, renk: 'sahte', sayi: 0 });
-    deste.push({ id: id++, renk: 'sahte', sayi: 0 });
-    
+    let idCounter = 1;
+
+    for (let set = 0; set < 2; set++) {
+        renkler.forEach(renk => {
+            for (let i = 1; i <= 13; i++) {
+                deste.push({ id: idCounter++, renk: renk, sayi: i });
+            }
+        });
+        // Sahte Okey (Joker)
+        deste.push({ id: idCounter++, renk: 'sahte', sayi: 0 });
+    }
+
+    // Karıştır (Fisher-Yates)
     for (let i = deste.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deste[i], deste[j]] = [deste[j], deste[i]];
@@ -47,101 +49,89 @@ function desteOlustur() {
     return deste;
 }
 
-function isOkey(tas) {
-    if (!tas || tas.renk === 'sahte') return false;
-    return tas.renk === gameState.okey.renk && tas.sayi === gameState.okey.sayi;
+// OKEY (JOKER) DESTEKLİ ESNEK PER KONTROLÜ
+function isOkey(tas, okey) {
+    if (!okey || !tas) return false;
+    let okeySayi = okey.sayi === 13 ? 1 : okey.sayi + 1;
+    return tas.renk === okey.renk && tas.sayi === okeySayi;
 }
 
-function tasIslenebilirMi(tas) {
-    if (!tas) return false;
-    for (let oIdx = 0; oIdx < 3; oIdx++) {
-        let o = gameState.oyuncular[oIdx];
-        // Seri kontrol
-        for (let p of o.acilanSeriler) {
-            let testPer = [...p, tas];
-            if (perKontrolEt(testPer).gecerli) return true;
-        }
-        // Çift kontrol
-        for (let c of o.acilanCiftler) {
-            if (tas.sayi === c[0].sayi && tas.renk === c[0].renk) return true;
+function isGecerliPer(grup, okey) {
+    if (!grup || grup.length < 3) return false;
+
+    let normalTaslar = grup.filter(t => t.sayi !== 0 && !isOkey(t, okey));
+    if (normalTaslar.length === 0) return true; // Hepsi okey/sahte ise geçerli
+
+    // 1. KONTROL: Grup (Aynı sayı, farklı renkler)
+    let hedefSayi = normalTaslar[0].sayi;
+    if (normalTaslar.every(t => t.sayi === hedefSayi)) {
+        let benzersizRenkler = new Set(normalTaslar.map(t => t.renk));
+        if (benzersizRenkler.size === normalTaslar.length && grup.length <= 4) {
+            return true;
         }
     }
+
+    // 2. KONTROL: Seri (Aynı renk, ardışık)
+    let hedefRenk = normalTaslar[0].renk;
+    if (normalTaslar.every(t => t.renk === hedefRenk)) {
+        let sayilar = normalTaslar.map(t => t.sayi).sort((a, b) => a - b);
+        if (sayilar.includes(13) && sayilar.includes(1)) {
+            sayilar = sayilar.map(s => s === 1 ? 14 : s).sort((a, b) => a - b);
+        }
+        let min = sayilar[0];
+        let max = sayilar[sayilar.length - 1];
+        if ((max - min) < grup.length) {
+            return true;
+        }
+    }
+
     return false;
 }
 
-function perKontrolEt(taslar) {
-    if (taslar.length < 3) return { gecerli: false };
-    let islem = taslar.map(t => t.renk === 'sahte' ? { ...gameState.okey } : { ...t });
-    
-    // Grup per kontrolü (aynı sayı, farklı renk)
-    if (taslar.length <= 4) {
-        let okeyCount = 0, num = null, colors = new Set(), valid = true;
-        for (let t of islem) {
-            if (isOkey(t)) okeyCount++;
-            else {
-                if (num === null) num = t.sayi;
-                else if (t.sayi !== num) { valid = false; break; }
-                if (colors.has(t.renk)) { valid = false; break; }
-                colors.add(t.renk);
-            }
-        }
-        if (valid && (colors.size + okeyCount === taslar.length)) {
-            return { gecerli: true, puan: (num || 0) * taslar.length };
-        }
+function getTasPuan(tas, okey) {
+    if (!tas) return 0;
+    if (tas.sayi === 0 || isOkey(tas, okey)) {
+        return okey ? okey.sayi : 10;
     }
-
-    // Seri per kontrolü (aynı renk, ardışık sayı)
-    let color = null;
-    for (let t of islem) {
-        if (!isOkey(t)) {
-            if (color === null) color = t.renk;
-            else if (t.renk !== color) return { gecerli: false };
-        }
-    }
-    let norm = islem.filter(t => !isOkey(t)).sort((a,b) => a.sayi - b.sayi);
-    if (norm.length === 0) return { gecerli: true, puan: gameState.okey.sayi * taslar.length };
-
-    let prev = norm[0].sayi, total = prev, okeys = islem.length - norm.length;
-    for (let i = 1; i < norm.length; i++) {
-        let diff = norm[i].sayi - prev;
-        if (diff <= 0) return { gecerli: false };
-        let missing = diff - 1;
-        if (okeys < missing) return { gecerli: false };
-        okeys -= missing;
-        total += norm[i].sayi;
-        prev = norm[i].sayi;
-    }
-    total += okeys * (prev + 1);
-    return { gecerli: true, puan: total };
+    return tas.sayi;
 }
 
+// OYUNU BAŞLAT
 function oyunuBaslat() {
     gameState.deste = desteOlustur();
-    gameState.gosterge = gameState.deste.pop();
-    gameState.okey = { ...gameState.gosterge };
-    if (gameState.okey.renk !== 'sahte') {
-        gameState.okey.sayi = gameState.okey.sayi === 13 ? 1 : gameState.okey.sayi + 1;
+    
+    // Gösterge ve Okey Belirle
+    let gostergeTas = gameState.deste.pop();
+    while (gostergeTas.sayi === 0) { // Sahte okey gösterge olamaz
+        gameState.deste.unshift(gostergeTas);
+        gostergeTas = gameState.deste.pop();
+    }
+    gameState.gosterge = gostergeTas;
+    
+    let okeySayi = gostergeTas.sayi === 13 ? 1 : gostergeTas.sayi + 1;
+    gameState.okey = { renk: gostergeTas.renk, sayi: okeySayi };
+
+    // 3 Kişiye Taş Dağıtımı (21'er taş, başlayana 22)
+    gameState.aktifOyuncu = 0;
+    for (let i = 0; i < 3; i++) {
+        let tasSayisi = (i === gameState.aktifOyuncu) ? 22 : 21;
+        gameState.oyuncular[i].taslar = gameState.deste.splice(0, tasSayisi);
+        gameState.oyuncular[i].acilanPuan = 0;
+        gameState.oyuncular[i].elAcaliMi = false;
     }
 
-    gameState.oyuncular[0].taslar = gameState.deste.splice(0, 22);
-    gameState.oyuncular[1].taslar = gameState.deste.splice(0, 21);
-    gameState.oyuncular[2].taslar = gameState.deste.splice(0, 21);
-
-    gameState.aktifOyuncu = 0;
-    gameState.tasCekildiMi = true;
+    gameState.enYuksekAcilanPuan = 100;
     gameState.sonAtilanTas = null;
-    gameState.mevcutSeriBaraji = 101;
-    gameState.mevcutCiftBaraji = 5;
     gameState.oyunBasladi = true;
-
-    io.emit('stateUpdate', gameState);
+    gameState.tasCekildiMi = true; // İlk oyuncunun 22 taşı var, çekmesine gerek yok
 }
 
 io.on('connection', (socket) => {
-    let seatIndex = gameState.oyuncular.findIndex(o => o.id === null);
-    if (seatIndex !== -1) {
-        gameState.oyuncular[seatIndex].id = socket.id;
-        socket.emit('playerAssigned', seatIndex);
+    // Koltuk Atama (Max 3 oyuncu)
+    let assignedIndex = gameState.oyuncular.findIndex(o => o.id === null);
+    if (assignedIndex !== -1) {
+        gameState.oyuncular[assignedIndex].id = socket.id;
+        socket.emit('playerAssigned', assignedIndex);
     } else {
         socket.emit('playerAssigned', -1); // İzleyici
     }
@@ -150,97 +140,95 @@ io.on('connection', (socket) => {
 
     socket.on('oyunuBaslat', () => {
         oyunuBaslat();
+        io.emit('stateUpdate', gameState);
     });
 
+    // TAŞ ÇEKME (DESTEDEN)
     socket.on('tasCek', (pIdx) => {
-        if (pIdx !== gameState.aktifOyuncu || gameState.tasCekildiMi) return;
-        if (gameState.deste.length > 0) {
-            gameState.oyuncular[pIdx].taslar.push(gameState.deste.pop());
+        if (pIdx === gameState.aktifOyuncu && !gameState.tasCekildiMi && gameState.deste.length > 0) {
+            let cekilen = gameState.deste.pop();
+            gameState.oyuncular[pIdx].taslar.push(cekilen);
             gameState.tasCekildiMi = true;
-            gameState.yandanTasAlindiMi = false;
             io.emit('stateUpdate', gameState);
         }
     });
 
+    // YANDAN TAŞ ALMA
     socket.on('yandanTasAl', (pIdx) => {
-        if (pIdx !== gameState.aktifOyuncu || gameState.tasCekildiMi || !gameState.sonAtilanTas) return;
-        gameState.oyuncular[pIdx].taslar.push(gameState.sonAtilanTas);
-        gameState.sonAtilanTas = null;
-        gameState.tasCekildiMi = true;
-        gameState.yandanTasAlindiMi = true;
-        io.emit('stateUpdate', gameState);
+        if (pIdx === gameState.aktifOyuncu && !gameState.tasCekildiMi && gameState.sonAtilanTas) {
+            gameState.oyuncular[pIdx].taslar.push(gameState.sonAtilanTas);
+            gameState.sonAtilanTas = null;
+            gameState.tasCekildiMi = true;
+            socket.emit('yandanTasAldiBildir');
+            io.emit('stateUpdate', gameState);
+        }
     });
 
-    socket.on('tasAt', ({ pIdx, tasIndex }) => {
-        if (pIdx !== gameState.aktifOyuncu || !gameState.tasCekildiMi) return;
-        let p = gameState.oyuncular[pIdx];
-        let atilan = p.taslar[tasIndex];
+    // PER AÇMA (101 BARAJ + KATLAMALI KONTROLÜ)
+    socket.on('seriAc', ({ pIdx, seciliIndices }) => {
+        if (pIdx !== gameState.aktifOyuncu) return;
 
-        let eliAcik = p.acilanPuan > 0 || p.acilanCiftler.length > 0;
-        
-        // 🚨 İŞLENEBİLİR TAŞI YERE ATMA CEZASI (+101)
-        if (eliAcik && tasIslenebilirMi(atilan)) {
-            p.ceza += 101;
-            io.emit('bildirim', `${p.isim} işlenebilir taşı (${atilan.renk.toUpperCase()} ${atilan.sayi}) yere attığı için +101 CEZA YEDİ!`);
+        let oyuncu = gameState.oyuncular[pIdx];
+        let acilacakTaslar = seciliIndices.map(idx => oyuncu.taslar[idx]).filter(Boolean);
+
+        // Seçilen veya belirlenen taşların gruplara ayrılması ve puan hesabı
+        let toplamPuan = 0;
+        let gecerliMi = true;
+
+        // Basit kontrol: Taşlar geçerli per oluşturuyor mu?
+        if (isGecerliPer(acilacakTaslar, gameState.okey)) {
+            acilacakTaslar.forEach(t => toplamPuan += getTasPuan(t, gameState.okey));
+        } else {
+            gecerliMi = false;
         }
 
-        gameState.sonAtilanTas = p.taslar.splice(tasIndex, 1)[0];
-        gameState.sonTasiAtanOyuncu = pIdx;
-        gameState.aktifOyuncu = (gameState.aktifOyuncu + 1) % 3;
-        gameState.tasCekildiMi = false;
-        gameState.yandanTasAlindiMi = false;
+        // Katlamalı Baraj Kontrolü
+        if (gecerliMi && toplamPuan > gameState.enYuksekAcilanPuan) {
+            // Başarılı Per Açma
+            gameState.enYuksekAcilanPuan = toplamPuan; // Katlamalı yeni baraj
+            oyuncu.acilanPuan = toplamPuan;
+            oyuncu.elAcaliMi = true;
 
-        io.emit('stateUpdate', gameState);
-    });
-
-    socket.on('seriAc', ({ pIdx, seciliIndices }) => {
-        let p = gameState.oyuncular[pIdx];
-        let secilenler = seciliIndices.map(i => p.taslar[i]);
-        let res = perKontrolEt(secilenler);
-
-        if (res.gecerli) {
-            let yeniPuan = p.acilanPuan + res.puan;
-            if (p.acilanPuan === 0 && yeniPuan < gameState.mevcutSeriBaraji) {
-                socket.emit('bildirim', `Barajı geçemiyorsunuz! Gereken: ${gameState.mevcutSeriBaraji}`);
-                return;
-            }
-            p.acilanSeriler.push(secilenler);
-            p.acilanPuan = yeniPuan;
-            if (p.acilanPuan >= gameState.mevcutSeriBaraji) gameState.mevcutSeriBaraji = p.acilanPuan + 1;
-
-            seciliIndices.sort((a,b) => b-a).forEach(i => p.taslar.splice(i, 1));
+            // Açılan taşları oyuncunun elinden sil
+            oyuncu.taslar = oyuncu.taslar.filter(t => !acilacakTaslar.includes(t));
+            
+            io.emit('bildirim', `${oyuncu.isim}, ${toplamPuan} puan ile elini açtı! (Yeni Baraj: ${toplamPuan + 1})`);
             io.emit('stateUpdate', gameState);
         } else {
-            socket.emit('bildirim', 'Geçersiz Per!');
+            let gerekli = gameState.enYuksekAcilanPuan + 1;
+            socket.emit('bildirim', `Geçersiz Per veya Puan Yetersiz! Açabilmek için en az ${gerekli} puan lazım (Senin Puanın: ${toplamPuan}).`);
         }
     });
 
-    socket.on('periIsle', ({ pIdx, hedefOyuncu, perIndex, tip, tasIndex }) => {
-        let p = gameState.oyuncular[pIdx];
-        if (p.acilanPuan === 0 && p.acilanCiftler.length === 0) {
-            socket.emit('bildirim', 'Taş işlemek için önce elinizi açmalısınız!');
-            return;
-        }
-        let islenecek = p.taslar[tasIndex];
+    // YANDAN TAŞ ALIP AÇAMAMA CEZASI VEYA TAŞ ATMA
+    socket.on('yandanTasCezasiYaz', ({ pIdx }) => {
+        gameState.oyuncular[pIdx].ceza += 101;
+        io.emit('bildirim', `${gameState.oyuncular[pIdx].isim} yandan taş alıp per açamadığı için +101 CEZA YEDİ!`);
+        io.emit('stateUpdate', gameState);
+    });
 
-        if (tip === 'seri') {
-            let hedef = gameState.oyuncular[hedefOyuncu].acilanSeriler[perIndex];
-            if (perKontrolEt([...hedef, islenecek]).gecerli) {
-                hedef.push(islenecek);
-                p.taslar.splice(tasIndex, 1);
-                io.emit('stateUpdate', gameState);
-            } else {
-                socket.emit('bildirim', 'Bu taş seçtiğiniz pere uymuyor!');
-            }
+    // TAŞ ATMA VE SIRA GEÇİRME
+    socket.on('tasAt', ({ pIdx, tasIndex }) => {
+        if (pIdx === gameState.aktifOyuncu && gameState.tasCekildiMi) {
+            let atilan = gameState.oyuncular[pIdx].taslar.splice(tasIndex, 1)[0];
+            gameState.sonAtilanTas = atilan;
+            
+            // Sıradaki oyuncuya geç (0 -> 1 -> 2 -> 0)
+            gameState.aktifOyuncu = (gameState.aktifOyuncu + 1) % 3;
+            gameState.tasCekildiMi = false;
+
+            io.emit('stateUpdate', gameState);
         }
     });
 
     socket.on('disconnect', () => {
-        let p = gameState.oyuncular.find(o => o.id === socket.id);
-        if (p) p.id = null;
-        io.emit('stateUpdate', gameState);
+        let pIdx = gameState.oyuncular.findIndex(o => o.id === socket.id);
+        if (pIdx !== -1) {
+            gameState.oyuncular[pIdx].id = null;
+            io.emit('stateUpdate', gameState);
+        }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sunucu ${PORT} portunda yayında...`));
+server.listen(PORT, () => console.log(`101 Okey Plus 3 Kişilik Sunucu ${PORT} Portunda Aktif!`));
