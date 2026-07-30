@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>101 Okey - 3 Kişilik</title>
+  <title>101 Okey - 3 Kişilik Canlı Masa</title>
+  <script src="/socket.io/socket.io.js"></script>
   
   <style>
     * {
@@ -48,7 +49,7 @@
     }
 
     .player-info {
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.6);
       color: #fff;
       padding: 6px 14px;
       border-radius: 20px;
@@ -56,6 +57,7 @@
       align-items: center;
       gap: 8px;
       font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     /* Kendi Alanımız (P1 - Alt Kısım) */
@@ -74,7 +76,7 @@
     .slot-p3 {
       top: 40px;
       right: 5%;
-      flex-direction: row-reverse; /* Sağındaki oyuncunun sağına taş düşsün diye */
+      flex-direction: row-reverse;
     }
 
     /* HER OYUNCUNUN SAĞINDAKİ TAŞ ATMA KUTUSU */
@@ -88,6 +90,7 @@
       justify-content: center;
       align-items: center;
       position: relative;
+      transition: all 0.2s ease;
     }
 
     .discard-zone .zone-label {
@@ -95,7 +98,7 @@
       color: rgba(255, 255, 255, 0.4);
     }
 
-    /* ORTA DESTE */
+    /* ORTA DESTE VE OKEY GÖSTERGESİ */
     .center-deck-area {
       position: absolute;
       top: 40%;
@@ -125,6 +128,18 @@
       color: #fff;
       font-weight: bold;
       font-size: 14px;
+      z-index: 2;
+    }
+
+    .indicator-box {
+      width: 50px;
+      height: 70px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.1);
     }
 
     /* ISTAKA - GERÇEK BOYUT VE MERKEZLEME */
@@ -138,7 +153,7 @@
     }
 
     .rack-wood {
-      width: min(90vw, 780px); /* Ekranın ortasına tam oturan ahşap ıstaka */
+      width: min(90vw, 780px);
       height: 135px;
       background: linear-gradient(180deg, #5c3a21 0%, #3d2413 100%);
       border: 4px solid #2b180b;
@@ -157,6 +172,7 @@
       background: rgba(0, 0, 0, 0.15);
       border-radius: 4px;
       padding: 2px 4px;
+      overflow-x: auto;
     }
 
     /* TAŞ GÖRÜNÜMÜ */
@@ -174,10 +190,16 @@
       font-size: 18px;
       cursor: pointer;
       transition: transform 0.1s ease;
+      flex-shrink: 0;
     }
 
     .tile:hover {
       transform: translateY(-4px);
+    }
+
+    .tile.selected {
+      border: 2px solid #ffb703;
+      transform: translateY(-6px);
     }
 
     /* Taş Renkleri */
@@ -185,6 +207,7 @@
     .tile.siyah { color: #000000; }
     .tile.mavi { color: #0077b6; }
     .tile.sari { color: #f2a900; }
+    .tile.joker { color: #7209b7; }
   </style>
 </head>
 <body>
@@ -197,7 +220,7 @@
       <div class="player-slot slot-p2">
         <div class="player-info">
           <span class="avatar">👤</span>
-          <span class="player-name" id="name-p2">Oyuncu 2</span>
+          <span class="player-name" id="name-p2">Oyuncu 2 Bekleniyor...</span>
         </div>
         <!-- P2'nin Sağındaki Taş Atma Alanı -->
         <div class="discard-zone" id="discard-p2">
@@ -213,23 +236,25 @@
         </div>
         <div class="player-info">
           <span class="avatar">👤</span>
-          <span class="player-name" id="name-p3">Oyuncu 3</span>
+          <span class="player-name" id="name-p3">Oyuncu 3 Bekleniyor...</span>
         </div>
       </div>
 
-      <!-- ORTA DESTE VE OKEY BÖLGESİ -->
+      <!-- ORTA DESTE VE GÖSTERGE -->
       <div class="center-deck-area">
-        <div class="deck-stack" id="draw-deck">
+        <div class="deck-stack" id="draw-deck" onclick="drawTile()">
           <div class="tile tile-back">🂠</div>
           <span class="deck-count" id="deck-count">106</span>
         </div>
-        <div class="indicator-tile-box" id="indicator-box"></div>
+        <div class="indicator-box" id="indicator-box">
+          <!-- Gösterge Taşı -->
+        </div>
       </div>
 
       <!-- SİZ (P1 - BAZ OYUNCU) -->
       <div class="player-slot slot-p1">
         <!-- P1 (Sizin) Sağınızdaki Taş Atma Alanı -->
-        <div class="discard-zone" id="discard-p1">
+        <div class="discard-zone" id="discard-p1" onclick="throwSelectedTile()">
           <span class="zone-label">Atılan</span>
         </div>
       </div>
@@ -246,16 +271,74 @@
   </div>
 
   <script>
-    // OYUN DURUMU (STATE)
-    let gameState = {
-      myId: 'p1',
-      lastDiscarded: { p1: null, p2: null, p3: null }
-    };
+    const socket = io();
 
-    // HER OYUNCUNUN ATTIĞI SON TAŞI GÜNCELLEME
+    let myRack = [];
+    let selectedTileIndex = null;
+    let myPlayerId = null;
+
+    // SOCKET DINLEYICILERI
+    socket.on('connect', () => {
+      console.log("Sunucuya bağlandık:", socket.id);
+    });
+
+    socket.on('initGame', (data) => {
+      myRack = data.hand || [];
+      myPlayerId = data.playerId;
+      renderRack();
+      if(data.indicator) {
+        document.getElementById('indicator-box').innerHTML = renderTileHTML(data.indicator);
+      }
+    });
+
+    socket.on('updateGameState', (state) => {
+      if (state.deckCount !== undefined) {
+        document.getElementById('deck-count').innerText = state.deckCount;
+      }
+      
+      // Oyuncu isimleri güncelleme
+      if(state.players) {
+        if(state.players[1]) document.getElementById('name-p2').innerText = state.players[1].name || "Oyuncu 2";
+        if(state.players[2]) document.getElementById('name-p3').innerText = state.players[2].name || "Oyuncu 3";
+      }
+
+      // Her oyuncunun attığı son taşları güncelle
+      if (state.discards) {
+        Object.keys(state.discards).forEach(pKey => {
+          updateDiscardZone(pKey, state.discards[pKey]);
+        });
+      }
+    });
+
+    socket.on('tileDrawn', (tile) => {
+      myRack.push(tile);
+      renderRack();
+    });
+
+    // TAŞ ÇEKME
+    function drawTile() {
+      socket.emit('drawTile');
+    }
+
+    // TAŞ SEÇME VE ATMA
+    function selectTile(index) {
+      selectedTileIndex = index;
+      renderRack();
+    }
+
+    function throwSelectedTile() {
+      if (selectedTileIndex === null) return;
+      const thrownTile = myRack.splice(selectedTileIndex, 1)[0];
+      selectedTileIndex = null;
+      renderRack();
+      
+      socket.emit('throwTile', { tile: thrownTile });
+    }
+
+    // ATILAN TAŞ KUTULARINI GÜNCELLEME
     function updateDiscardZone(playerId, tile) {
-      gameState.lastDiscarded[playerId] = tile;
       const zoneElem = document.getElementById(`discard-${playerId}`);
+      if (!zoneElem) return;
 
       if (!tile) {
         zoneElem.innerHTML = `<span class="zone-label">Atılan</span>`;
@@ -265,22 +348,38 @@
       zoneElem.innerHTML = renderTileHTML(tile);
     }
 
-    // TAŞ HTML KODUNU ÜRETME
-    function renderTileHTML(tile) {
+    // TAŞ HTML'I OLUŞTURMA
+    function renderTileHTML(tile, index = null) {
+      const isSelected = index === selectedTileIndex ? 'selected' : '';
+      const clickAttr = index !== null ? `onclick="selectTile(${index})"` : '';
+      
       return `
-        <div class="tile ${tile.color}">
+        <div class="tile ${tile.color} ${isSelected}" ${clickAttr}>
           <span>${tile.value}</span>
         </div>
       `;
     }
 
-    // TEST İÇİN BAŞLANGIÇ GÖRÜNÜMÜ
-    window.onload = () => {
-      // Örnek: Masada atılan son taşların testi
-      updateDiscardZone('p2', { color: 'kirmizi', value: 7 });
-      updateDiscardZone('p3', { color: 'mavi', value: 11 });
-      updateDiscardZone('p1', { color: 'siyah', value: 3 });
-    };
+    // ISTAKAYI ÇİZME (Çift Sıra Mantığı)
+    function renderRack() {
+      const upperRow = document.getElementById('rack-upper');
+      const lowerRow = document.getElementById('rack-lower');
+
+      upperRow.innerHTML = '';
+      lowerRow.innerHTML = '';
+
+      const half = Math.ceil(myRack.length / 2);
+      const upperTiles = myRack.slice(0, half);
+      const lowerTiles = myRack.slice(half);
+
+      upperTiles.forEach((tile, idx) => {
+        upperRow.innerHTML += renderTileHTML(tile, idx);
+      });
+
+      lowerTiles.forEach((tile, idx) => {
+        lowerRow.innerHTML += renderTileHTML(tile, idx + half);
+      });
+    }
   </script>
 </body>
 </html>
