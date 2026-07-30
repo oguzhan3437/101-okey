@@ -1,4 +1,16 @@
-Bot: false, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.static(__dirname));
+
+let gameState = {
+    oyuncular: [
+        { id: null, isim: "Oyuncu 1", isBot: false, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
         { id: null, isim: "Bot 1", isBot: true, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
         { id: null, isim: "Bot 2", isBot: true, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false }
     ],
@@ -69,7 +81,6 @@ function botHamleKontrol() {
     let aktif = gameState.oyuncular[gameState.aktifOyuncu];
     if (aktif && aktif.isBot) {
         setTimeout(() => {
-            // 1. Taş Çekme
             if (!gameState.tasCekildiMi && gameState.deste.length > 0) {
                 let cekilen = gameState.deste.pop();
                 aktif.taslar.push(cekilen);
@@ -77,7 +88,6 @@ function botHamleKontrol() {
                 io.emit('stateUpdate', gameState);
             }
 
-            // 2. Taş Atma (Bot elindeki rastgele/en gereksiz taşı atar)
             setTimeout(() => {
                 if (gameState.tasCekildiMi && aktif.taslar.length > 0) {
                     let atilacakIdx = Math.floor(Math.random() * aktif.taslar.length);
@@ -88,7 +98,7 @@ function botHamleKontrol() {
                     gameState.tasCekildiMi = false;
 
                     io.emit('stateUpdate', gameState);
-                    botHamleKontrol(); // Sonraki oyuncu da bot ise devret
+                    botHamleKontrol();
                 }
             }, 1200);
         }, 1000);
@@ -96,10 +106,8 @@ function botHamleKontrol() {
 }
 
 io.on('connection', (socket) => {
-    // Önce tamamen boş koltuk ara
     let emptyIndex = gameState.oyuncular.findIndex(o => o.id === null && !o.isBot);
 
-    // Boş insan koltuğu yoksa botların koltuğuna insan oturt
     if (emptyIndex === -1) {
         emptyIndex = gameState.oyuncular.findIndex(o => o.isBot);
     }
@@ -110,7 +118,7 @@ io.on('connection', (socket) => {
         gameState.oyuncular[emptyIndex].isBot = false;
         socket.emit('playerAssigned', emptyIndex);
     } else {
-        socket.emit('playerAssigned', -1); // İzleyici
+        socket.emit('playerAssigned', -1);
     }
 
     io.emit('stateUpdate', gameState);
@@ -178,7 +186,6 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         let pIdx = gameState.oyuncular.findIndex(o => o.id === socket.id);
         if (pIdx !== -1) {
-            // İnsan çıkınca koltuğu tekrar bota devret
             gameState.oyuncular[pIdx].id = null;
             gameState.oyuncular[pIdx].isim = `Bot ${pIdx + 1}`;
             gameState.oyuncular[pIdx].isBot = true;
@@ -189,4 +196,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Botlu 101 Okey Plus Hazır! Port: ${PORT}`));
+server.listen(PORT, () => console.log(`3 Kişilik 101 Okey Plus Hazır! Port: ${PORT}`));
