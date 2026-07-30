@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>101 Okey Plus - Hata Düzeltildi</title>
+    <title>101 Okey Plus - Genel Per ve Çift Motoru</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; user-select: none; }
@@ -159,46 +159,71 @@
         return tas.renk === state.okey.renk && tas.sayi === okeySayi;
     }
 
+    function isJoker(tas) {
+        if (!tas) return false;
+        return tas.sayi === 0 || isOkey(tas);
+    }
+
     function getTasPuan(tas) {
         if (!tas) return 0;
-        if (tas.sayi === 0 || isOkey(tas)) return state.okey ? state.okey.sayi : 10;
+        if (isJoker(tas)) return state.okey ? state.okey.sayi : 10;
         return tas.sayi;
     }
 
-    // DÜZELTİLMİŞ PER GEÇERLİLİK KONTROLÜ (AYNI SAYI TEKRARINI KABUL ETMEYEN KONTROL)
+    // EVRENSEL VE BÜTÜN PERLER İÇİN GEÇERLİ PER MOTORU
     function isGecerliPer(grup) {
         if (!grup || grup.length < 3) return false;
-        let normal = grup.filter(t => t.sayi !== 0 && !isOkey(t));
-        if (normal.length === 0) return true;
+        
+        let normal = grup.filter(t => !isJoker(t));
+        if (normal.length === 0) return true; // Hepsi Joker ise geçerli
 
-        // 1. Durum: Aynı sayılar farklı renkler (Örn: 7-7-7)
-        let hedefSayi = normal[0].sayi;
-        if (normal.every(t => t.sayi === hedefSayi)) {
-            let benzersizRenkler = new Set(normal.map(t => t.renk));
-            if (benzersizRenkler.size === normal.length && grup.length <= 4) return true;
+        // KONTROL 1: GRUP PER (Farklı renkler, aynı sayı. Örn: Sarı 7 - Mavi 7 - Siyah 7 - OKEY)
+        let ilkSayi = normal[0].sayi;
+        if (normal.every(t => t.sayi === ilkSayi)) {
+            let renkSet = new Set(normal.map(t => t.renk));
+            if (renkSet.size === normal.length && grup.length <= 4) {
+                return true;
+            }
         }
 
-        // 2. Durum: Aynı renk ardışık sayılar (Örn: 1-2-3-4)
-        let hedefRenk = normal[0].renk;
-        if (normal.every(t => t.renk === hedefRenk)) {
-            let sayilar = normal.map(t => t.sayi).sort((a, b) => a - b);
+        // KONTROL 2: SERİ PER (Aynı renk, ardışık sayılar. Örn: Mavi 4 - OKEY - Mavi 6 - Mavi 7)
+        let ilkRenk = normal[0].renk;
+        if (normal.every(t => t.renk === ilkRenk)) {
+            // Jokerleri yerleştireceğimiz sanal sayı dizisi oluşturalım
+            let sayilar = grup.map(t => isJoker(t) ? null : t.sayi);
             
-            // Eğer aynı renk ve sayıdan birden fazla varsa geçersizdir (1-2-2 engellendi)
-            let benzersizSayilar = new Set(sayilar);
-            if (benzersizSayilar.size !== sayilar.length) return false;
+            // Sıralı boşluk kontrolü
+            let basarilimi = true;
+            let referansSayi = null;
 
-            // 12-13-1 İstisnai Seri Kontrolü
-            if (sayilar.includes(13) && sayilar.includes(1)) {
-                sayilar = sayilar.map(s => s === 1 ? 14 : s).sort((a, b) => a - b);
-            }
+            // İlk sayı değeri bilinen taşın konumunu bul
+            let bilinenIdx = sayilar.findIndex(s => s !== null);
+            if (bilinenIdx === -1) return true;
 
-            // Ardışık sayıların sırayla +1 artıp artmadığı kontrol edilir
-            for (let i = 0; i < sayilar.length - 1; i++) {
-                if (sayilar[i + 1] - sayilar[i] !== 1) return false;
+            // Baştan sona beklenen sayıları simüle et
+            let baslangicSayisi = sayilar[bilinenIdx] - bilinenIdx;
+
+            for (let i = 0; i < sayilar.length; i++) {
+                let beklenen = baslangicSayisi + i;
+                if (sayilar[i] !== null && sayilar[i] !== beklenen) {
+                    // 12-13-1 İstisnası kontrolü
+                    if (!(beklenen === 14 && sayilar[i] === 1)) {
+                        basarilimi = false;
+                        break;
+                    }
+                }
             }
-            return true;
+            if (basarilimi) return true;
         }
+
         return false;
+    }
+
+    // EVRENSEL ÇİFT KONTROLÜ
+    function isGecerliCift(t1, t2) {
+        if (!t1 || !t2) return false;
+        if (isJoker(t1) || isJoker(t2)) return true;
+        return t1.renk === t2.renk && t1.sayi === t2.sayi;
     }
 
     function getIstakadakiPerler() {
@@ -332,7 +357,7 @@
     function otomatikPerAc() {
         let perler = getIstakadakiPerler();
         if (perler.length === 0) {
-            alert("Istakada yan yana dizili geçerli per bulunamadı! 'Seri Diz' butonunu kullanabilirsiniz.");
+            alert("Istakada yan yana dizili geçerli per bulunamadı!");
             return;
         }
 
@@ -348,7 +373,7 @@
         for (let i = 0; i < taslar.length; i++) {
             if (visited.has(i)) continue;
             for (let j = i + 1; j < taslar.length; j++) {
-                if (!visited.has(j) && taslar[i].renk === taslar[j].renk && taslar[i].sayi === taslar[j].sayi) {
+                if (!visited.has(j) && isGecerliCift(taslar[i], taslar[j])) {
                     ciftGruplari.push([taslar[i].id, taslar[j].id]);
                     visited.add(i); visited.add(j);
                     break;
@@ -382,7 +407,6 @@
         }
     }
 
-    // DÜZELTİLMİŞ SERİ DİZME MANTIĞI (1-2-2 İKİZ TAŞLARINI BOŞLUKLA AYIRIR)
     function seriDiz() {
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
@@ -400,8 +424,6 @@
             if (i < taslar.length - 1) {
                 let suanki = taslar[i];
                 let sonraki = taslar[i+1];
-
-                // Eğer renk farklıysa VEYA ardışık değilse VEYA aynı sayı/renkten 2. taş geldiyse (1-2-2) BOŞLUK BIRAK
                 if (suanki.renk !== sonraki.renk || (sonraki.sayi - suanki.sayi !== 1)) {
                     cursor++; 
                 }
@@ -425,7 +447,7 @@
             if (visited.has(i)) continue;
             let matchIdx = -1;
             for (let j = i + 1; j < taslar.length; j++) {
-                if (!visited.has(j) && taslar[i].renk === taslar[j].renk && taslar[i].sayi === taslar[j].sayi) {
+                if (!visited.has(j) && isGecerliCift(taslar[i], taslar[j])) {
                     matchIdx = j;
                     break;
                 }
