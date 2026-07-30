@@ -8,24 +8,22 @@ const io = new Server(server);
 
 app.use(express.static(__dirname));
 
-// OYUN DURUMU (STATE)
 let gameState = {
     oyuncular: [
-        { id: null, isim: "Oyuncu 1", taslar: [], ceza: 0, acilanPuan: 0, elAcaliMi: false },
-        { id: null, isim: "Oyuncu 2", taslar: [], ceza: 0, acilanPuan: 0, elAcaliMi: false },
-        { id: null, isim: "Oyuncu 3", taslar: [], ceza: 0, acilanPuan: 0, elAcaliMi: false }
+        { id: null, isim: "Oyuncu 1", taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false, acisTipi: null },
+        { id: null, isim: "Oyuncu 2", taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false, acisTipi: null },
+        { id: null, isim: "Oyuncu 3", taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false, acisTipi: null }
     ],
     deste: [],
     okey: null,
     gosterge: null,
     aktifOyuncu: 0,
     sonAtilanTas: null,
-    enYuksekAcilanPuan: 100, // Başlangıç barajı (Açmak için min 101)
+    enYuksekAcilanPuan: 100, // Katlamalı Seri barajı (Min 101)
     oyunBasladi: false,
     tasCekildiMi: false
 };
 
-// DESTE OLUSTURMA (106 Taş)
 function desteOlustur() {
     let renkler = ['kirmizi', 'siyah', 'mavi', 'sari'];
     let deste = [];
@@ -61,17 +59,39 @@ function getTasPuan(tas, okey) {
     return tas.sayi;
 }
 
-// OYUNU BAŞLAT
+function isGecerliPer(grup, okey) {
+    if (!grup || grup.length < 3) return false;
+    let normal = grup.filter(t => t.sayi !== 0 && !isOkey(t, okey));
+    if (normal.length === 0) return true;
+
+    let hedefSayi = normal[0].sayi;
+    if (normal.every(t => t.sayi === hedefSayi)) {
+        let benzersizRenkler = new Set(normal.map(t => t.renk));
+        if (benzersizRenkler.size === normal.length && grup.length <= 4) return true;
+    }
+
+    let hedefRenk = normal[0].renk;
+    if (normal.every(t => t.renk === hedefRenk)) {
+        let sayilar = normal.map(t => t.sayi).sort((a, b) => a - b);
+        if (sayilar.includes(13) && sayilar.includes(1)) {
+            sayilar = sayilar.map(s => s === 1 ? 14 : s).sort((a, b) => a - b);
+        }
+        let min = sayilar[0];
+        let max = sayilar[sayilar.length - 1];
+        if ((max - min) < grup.length) return true;
+    }
+
+    return false;
+}
+
 function oyunuBaslat() {
     gameState.deste = desteOlustur();
-    
     let gostergeTas = gameState.deste.pop();
     while (gostergeTas.sayi === 0) {
         gameState.deste.unshift(gostergeTas);
         gostergeTas = gameState.deste.pop();
     }
     gameState.gosterge = gostergeTas;
-    
     let okeySayi = gostergeTas.sayi === 13 ? 1 : gostergeTas.sayi + 1;
     gameState.okey = { renk: gostergeTas.renk, sayi: okeySayi };
 
@@ -79,14 +99,16 @@ function oyunuBaslat() {
     for (let i = 0; i < 3; i++) {
         let tasSayisi = (i === gameState.aktifOyuncu) ? 22 : 21;
         gameState.oyuncular[i].taslar = gameState.deste.splice(0, tasSayisi);
-        gameState.oyuncular[i].acilanPuan = 0;
+        gameState.oyuncular[i].acilanSeriler = [];
+        gameState.oyuncular[i].acilanCiftler = [];
         gameState.oyuncular[i].elAcaliMi = false;
+        gameState.oyuncular[i].acisTipi = null;
     }
 
     gameState.enYuksekAcilanPuan = 100;
     gameState.sonAtilanTas = null;
     gameState.oyunBasladi = true;
-    gameState.tasCekildiMi = true; // Başlayan oyuncunun 22 taşı var
+    gameState.tasCekildiMi = true;
 }
 
 io.on('connection', (socket) => {
@@ -124,28 +146,92 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('seriAc', ({ pIdx, seciliIndices }) => {
+    // SERİ PER AÇMA
+    socket.on('seriAc', ({ pIdx, perGruplari }) => {
         if (pIdx !== gameState.aktifOyuncu) return;
-
         let oyuncu = gameState.oyuncular[pIdx];
-        let acilacakTaslar = seciliIndices.map(idx => oyuncu.taslar[idx]).filter(Boolean);
+
+        if (oyuncu.acisTipi === 'cift') {
+            socket.emit('bildirim', 'Daha önce Çift açtınız! Seri per açamazsınız.');
+            return;
+        }
 
         let toplamPuan = 0;
-        acilacakTaslar.forEach(t => toplamPuan += getTasPuan(t, gameState.okey));
+        let tumGecerli = true;
+        let kullanilanTasIdler = [];
+
+        perGruplari.forEach(grupIds => {
+            let grupTaslar = grupIds.map(id => oyuncu.taslar.find(t => t.id === id)).filter(Boolean);
+            if (isGecerliPer(grupTaslar, gameState.okey)) {
+                grupTaslar.forEach(t => {
+                    toplamPuan += getTasPuan(t, gameState.okey);
+                    kullanilanTasIdler.push(t.id);
+                });
+            } else {
+                tumGecerli = false;
+            }
+        });
+
+        if (!tumGecerli) {
+            socket.emit('bildirim', 'Seçtiğiniz perlerden biri veya birkaçı geçersiz!');
+            return;
+        }
 
         let gerekliPuan = gameState.enYuksekAcilanPuan + 1;
-
         if (toplamPuan >= gerekliPuan) {
-            gameState.enYuksekAcilanPuan = toplamPuan; // Katlamalı Yeni Baraj
-            oyuncu.acilanPuan = toplamPuan;
+            gameState.enYuksekAcilanPuan = toplamPuan;
             oyuncu.elAcaliMi = true;
+            oyuncu.acisTipi = 'seri';
 
-            oyuncu.taslar = oyuncu.taslar.filter(t => !acilacakTaslar.includes(t));
-            
-            io.emit('bildirim', `${oyuncu.isim}, ${toplamPuan} puan ile açtı! Yeni Baraj: ${toplamPuan + 1}`);
+            perGruplari.forEach(grupIds => {
+                let grupTaslar = grupIds.map(id => oyuncu.taslar.find(t => t.id === id)).filter(Boolean);
+                oyuncu.acilanSeriler.push(grupTaslar);
+            });
+
+            oyuncu.taslar = oyuncu.taslar.filter(t => !kullanilanTasIdler.includes(t.id));
+            io.emit('bildirim', `${oyuncu.isim}, ${toplamPuan} puan ile Seri açtı! (Yeni Baraj: ${toplamPuan + 1})`);
             io.emit('stateUpdate', gameState);
         } else {
-            socket.emit('bildirim', `Puan Yetersiz! Açmak için en az ${gerekliPuan} puan lazım. Senin Puanın: ${toplamPuan}`);
+            socket.emit('bildirim', `Puan Yetersiz! En az ${gerekliPuan} puan lazım. Senin Puanın: ${toplamPuan}`);
+        }
+    });
+
+    // ÇİFT AÇMA (MIN 5 ÇİFT)
+    socket.on('ciftAc', ({ pIdx, ciftGruplari }) => {
+        if (pIdx !== gameState.aktifOyuncu) return;
+        let oyuncu = gameState.oyuncular[pIdx];
+
+        if (oyuncu.acisTipi === 'seri') {
+            socket.emit('bildirim', 'Daha önce Seri açtınız! Çift açamazsınız.');
+            return;
+        }
+
+        if (ciftGruplari.length < 5 && !oyuncu.elAcaliMi) {
+            socket.emit('bildirim', 'Çift açabilmek için en az 5 ÇİFT (10 Taş) seçmelisiniz!');
+            return;
+        }
+
+        let kullanilanTasIdler = [];
+        let yeniCiftler = [];
+
+        ciftGruplari.forEach(pair => {
+            let t1 = oyuncu.taslar.find(t => t.id === pair[0]);
+            let t2 = oyuncu.taslar.find(t => t.id === pair[1]);
+            if (t1 && t2 && ((t1.renk === t2.renk && t1.sayi === t2.sayi) || isOkey(t1, gameState.okey) || isOkey(t2, gameState.okey))) {
+                yeniCiftler.push([t1, t2]);
+                kullanilanTasIdler.push(t1.id, t2.id);
+            }
+        });
+
+        if (yeniCiftler.length === ciftGruplari.length) {
+            oyuncu.elAcaliMi = true;
+            oyuncu.acisTipi = 'cift';
+            oyuncu.acilanCiftler.push(...yeniCiftler);
+            oyuncu.taslar = oyuncu.taslar.filter(t => !kullanilanTasIdler.includes(t.id));
+            io.emit('bildirim', `${oyuncu.isim} başarıyla ÇİFT açtı!`);
+            io.emit('stateUpdate', gameState);
+        } else {
+            socket.emit('bildirim', 'Seçilen çiftlerden bazıları eşleşmiyor!');
         }
     });
 
@@ -159,10 +245,8 @@ io.on('connection', (socket) => {
         if (pIdx === gameState.aktifOyuncu && gameState.tasCekildiMi) {
             let atilan = gameState.oyuncular[pIdx].taslar.splice(tasIndex, 1)[0];
             gameState.sonAtilanTas = atilan;
-            
             gameState.aktifOyuncu = (gameState.aktifOyuncu + 1) % 3;
             gameState.tasCekildiMi = false;
-
             io.emit('stateUpdate', gameState);
         }
     });
