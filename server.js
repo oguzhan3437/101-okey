@@ -1,31 +1,4 @@
-Harika bir fikir! Bu özellik oyunun akıcılığını müthiş artırır. Böylece arkadaşların masaya gelene kadar beklemen gerekmez; masaya oturduğun an botlar oyuna dahil olur, arkadaşların bağlandıkça da botların yerini alıp oyuna devam ederler.
-
-Bu yapıyı kurmak için hem server.js hem de index.html kodlarında bot mantığını ve dinamik oyuncu katılımını devreye alıyoruz.
-
-Sistem Nasıl Çalışıyor?
-Otomatik Bot Atama: Masada insan oyuncu eksikse, o koltuklara otomatik olarak Bot 1 ve Bot 2 atanır.
-
-Akıllı Oyun Akışı (Bot Hamleleri): Sıra bir bota geldiğinde bot otomatik olarak desteden taş çeker, elini kontrol eder ve mantıklı bir taş seçip sağ tarafa atar (hamlesini 1.5 saniye gecikmeyle yapar ki oyun akıcı görünsün).
-
-Canlı Oyuncu Katılımı (Bot Yerin Oyuncu Geçmesi): Bir arkadaşın linke tıklayıp masaya girdiğinde, sistem aktif oynayan botlardan birini masadan çıkarıp arkadaşını doğrudan o koltuğa oturtur. Arkadaşın oyun bozulmadan sıradaki hamleyle devam eder.
-
-1. server.js (Bot Destekli Sunucu Kodu)
-server.js dosyasının tamamını silip bu kodu yapıştır:
-
-JavaScript
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static(__dirname));
-
-let gameState = {
-    oyuncular: [
-        { id: null, isim: "Oyuncu 1", isBot: false, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
+Bot: false, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
         { id: null, isim: "Bot 1", isBot: true, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
         { id: null, isim: "Bot 2", isBot: true, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false }
     ],
