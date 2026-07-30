@@ -3,36 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3 Kişilik 101 Okey Plus</title>
+    <title>101 Okey Plus - 3 Kişilik</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; user-select: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; user-select: none; }
         body { background: #0a1f0a; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        .masa-container { flex: 1; display: flex; flex-direction: column; padding: 10px; justify-content: space-between; background: radial-gradient(circle, #1e5c1e 0%, #051405 100%); }
-        .rakipler-alan { display: flex; justify-content: space-around; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; }
-        .rakip-kutu { background: rgba(18, 51, 18, 0.9); border: 1px solid #2e7d32; padding: 6px 16px; border-radius: 8px; text-align: center; }
-        .rakip-kutu.aktif { border: 2px solid #ffeb3b; box-shadow: 0 0 10px #ffeb3b; }
-
-        .orta-masa { display: flex; justify-content: space-around; align-items: center; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; }
-        .kutucuk { background: rgba(0,0,0,0.6); padding: 8px 14px; border-radius: 8px; text-align: center; font-size: 12px; border: 1px solid rgba(255, 179, 0, 0.4); }
-
-        .oyuncu-alan { background: #180d05; border-top: 3px solid #ffb300; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-        .istaka-kontrol { display: flex; justify-content: space-between; align-items: center; }
+        .masa-container { flex: 1; display: flex; flex-direction: column; padding: 6px; justify-content: space-between; background: radial-gradient(circle, #1e5c1e 0%, #051405 100%); }
         
-        .istaka-ve-atma { display: flex; gap: 10px; align-items: center; }
-        .ahsap-istaka { background: #3d220f; border: 3px solid #1a0d05; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-x: auto; }
-        .istaka-satir { display: flex; gap: 4px; background: #140a04; padding: 4px; border-radius: 4px; min-width: 600px; }
-        .yuva { width: 36px; height: 50px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 4px; }
+        .rakipler-alan { display: flex; justify-content: space-around; background: rgba(0,0,0,0.4); padding: 4px; border-radius: 6px; font-size: 11px; }
+        .rakip-kutu { background: rgba(18, 51, 18, 0.9); border: 1px solid #2e7d32; padding: 4px 12px; border-radius: 6px; text-align: center; }
+        .rakip-kutu.aktif { border: 2px solid #ffeb3b; box-shadow: 0 0 8px #ffeb3b; }
 
-        .tas { width: 100%; height: 100%; background: #f4ebd9; border-radius: 4px; border-bottom: 3px solid #b39b6e; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; cursor: pointer; color: #111; position: relative; }
-        .tas.secili { transform: translateY(-6px); border: 2px solid #ff6f00; background: #fffde7; }
-        .okey-rozeti { position: absolute; top: 1px; right: 1px; font-size: 7px; background: #d32f2f; color: #ffeb3b; padding: 1px; border-radius: 2px; }
+        /* YERE AÇILAN PERLER VE ÇİFTLER ALANI */
+        .masadaki-perler-container { flex: 1; display: flex; gap: 10px; margin: 4px 0; overflow-y: auto; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 6px; }
+        .masada-bolum { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+        .masada-baslik { font-size: 11px; font-weight: bold; color: #ffb300; border-bottom: 1px solid rgba(255,179,0,0.3); padding-bottom: 2px; }
+        .masada-liste { display: flex; flex-wrap: wrap; gap: 8px; }
+        .per-grubu-yeryuzu { display: flex; background: rgba(0,0,0,0.5); padding: 2px; border-radius: 4px; border: 1px solid #4caf50; }
+
+        .orta-masa { display: flex; justify-content: space-around; align-items: center; background: rgba(0,0,0,0.5); border-radius: 8px; padding: 6px; margin-bottom: 4px; }
+        .kutucuk { background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 6px; text-align: center; font-size: 11px; border: 1px solid rgba(255, 179, 0, 0.3); }
+
+        .oyuncu-alan { background: #180d05; border-top: 3px solid #ffb300; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+        .istaka-kontrol { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+        
+        .istaka-ve-atma { display: flex; gap: 8px; align-items: center; }
+        .ahsap-istaka { background: #3d220f; border: 3px solid #1a0d05; border-radius: 6px; padding: 4px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        .istaka-satir { display: flex; background: #140a04; padding: 2px; border-radius: 4px; height: 46px; }
+        .yuva { width: 32px; height: 42px; border: 1px dashed rgba(255,255,255,0.05); border-radius: 3px; margin-right: 1px; flex-shrink: 0; }
+
+        .tas { width: 30px; height: 42px; background: #f4ebd9; border-radius: 3px; border-bottom: 2px solid #b39b6e; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; cursor: grab; color: #111; position: relative; }
+        .tas.secili { transform: translateY(-4px); border: 2px solid #ff6f00; background: #fffde7; }
+        .okey-rozeti { position: absolute; top: 0; right: 0; font-size: 6px; background: #d32f2f; color: #ffeb3b; padding: 1px; border-radius: 2px; }
 
         .kirmizi { color: #d32f2f; } .siyah { color: #111; } .mavi { color: #1976d2; } .sari { color: #f57f17; } .sahte { color: #7b1fa2; }
 
-        .sag-tas-atma { width: 80px; height: 110px; background: #7f1d1d; border: 2px dashed #ffeb3b; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; cursor: pointer; }
-        button { background: #ffb300; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .sag-tas-atma { width: 65px; height: 90px; background: #7f1d1d; border: 2px dashed #ffeb3b; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; cursor: pointer; text-align: center; }
+        button { background: #ffb300; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px; }
     </style>
 </head>
 <body>
@@ -40,21 +48,38 @@
 <div class="masa-container">
     <div class="rakipler-alan" id="rakipler-alan"></div>
 
+    <!-- YERE AÇILAN SERİ VE ÇİFT PERLERİN AYRI DİZİLDİĞİ ALAN -->
+    <div class="masadaki-perler-container">
+        <div class="masada-bolum">
+            <div class="masada-baslik">AÇILAN SERİ PERLER</div>
+            <div class="masada-liste" id="masada-seriler"></div>
+        </div>
+        <div class="masada-bolum">
+            <div class="masada-baslik">AÇILAN ÇİFTLER</div>
+            <div class="masada-liste" id="masada-ciftler"></div>
+        </div>
+    </div>
+
     <div class="orta-masa">
         <div class="kutucuk">Deste<br><strong id="kalan-tas" style="color:#ffeb3b;">-</strong><br><button id="btn-tas-cek" style="display:none;" onclick="tasCek()">Taş Çek</button></div>
         <div class="kutucuk">Gösterge<br><div id="okey-tas"></div></div>
-        <div class="kutucuk">Açma Barajı<br><strong id="baraj-puan" style="color:#4caf50;">101</strong></div>
+        <div class="kutucuk">Seri Barajı<br><strong id="baraj-puan" style="color:#4caf50;">101</strong></div>
         <div class="kutucuk">Son Atılan<br><div id="son-atilan-tas"></div><button id="btn-yandan-al" style="display:none;" onclick="yandanTasAl()">Yandan Al</button></div>
         <button onclick="socket.emit('oyunuBaslat')">Eli Başlat</button>
     </div>
 
     <div class="oyuncu-alan">
         <div class="istaka-kontrol">
-            <div><strong id="benim-bilgi" style="color:#ffeb3b;">Oyuncu</strong> | <span id="ceza-bilgi" style="color:#ff5252;">Ceza: 0</span></div>
+            <div>
+                <strong id="benim-bilgi" style="color:#ffeb3b;">Oyuncu</strong> | 
+                <span id="ceza-bilgi" style="color:#ff5252;">Ceza: 0</span> | 
+                <span id="canli-puan" style="color:#00e676; font-weight:bold;">Seçili Per Puanı: 0</span>
+            </div>
             <div>
                 <button onclick="seriDiz()">Seri Diz</button>
                 <button onclick="ciftDiz()">Çift Diz</button>
-                <button style="background:#4caf50; color:white;" onclick="perAc()">Per Aç</button>
+                <button style="background:#4caf50; color:white;" onclick="perAc()">Seri Aç</button>
+                <button style="background:#0288d1; color:white;" onclick="ciftAc()">Çift Aç</button>
                 <button style="background:#d32f2f; color:white;" onclick="tasAt()">Taş At</button>
             </div>
         </div>
@@ -76,6 +101,7 @@
     let state = null;
     let localIstaka = new Array(36).fill(null);
     let yandanTasAldiMi = false;
+    let draggedIndex = null;
 
     function istakaInit() {
         const ust = document.getElementById('ust-satir');
@@ -88,6 +114,8 @@
     function createSlot(index) {
         let slot = document.createElement('div');
         slot.className = 'yuva'; slot.dataset.index = index;
+        slot.ondragover = (e) => e.preventDefault();
+        slot.ondrop = (e) => dropTas(e, index);
         return slot;
     }
 
@@ -129,6 +157,65 @@
         return tas.renk === state.okey.renk && tas.sayi === okeySayi;
     }
 
+    function getTasPuan(tas) {
+        if (!tas) return 0;
+        if (tas.sayi === 0 || isOkey(tas)) return state.okey ? state.okey.sayi : 10;
+        return tas.sayi;
+    }
+
+    function isGecerliPer(grup) {
+        if (!grup || grup.length < 3) return false;
+        let normal = grup.filter(t => t.sayi !== 0 && !isOkey(t));
+        if (normal.length === 0) return true;
+
+        let hedefSayi = normal[0].sayi;
+        if (normal.every(t => t.sayi === hedefSayi)) {
+            let benzersizRenkler = new Set(normal.map(t => t.renk));
+            if (benzersizRenkler.size === normal.length && grup.length <= 4) return true;
+        }
+
+        let hedefRenk = normal[0].renk;
+        if (normal.every(t => t.renk === hedefRenk)) {
+            let sayilar = normal.map(t => t.sayi).sort((a, b) => a - b);
+            if (sayilar.includes(13) && sayilar.includes(1)) {
+                sayilar = sayilar.map(s => s === 1 ? 14 : s).sort((a, b) => a - b);
+            }
+            let min = sayilar[0];
+            let max = sayilar[sayilar.length - 1];
+            if ((max - min) < grup.length) return true;
+        }
+        return false;
+    }
+
+    // CANLI PUAN HESAPLAMA (SADECE GEÇERLİ PERLERİ TOPLAR)
+    function canliPuanHesapla() {
+        if (!state || benimKoltugum === -1) return;
+        let oyuncuTaslar = state.oyuncular[benimKoltugum].taslar;
+        let seciliTaslar = seciliIndices.map(id => oyuncuTaslar.find(t => t.id === id)).filter(Boolean);
+
+        let toplamPuan = 0;
+        if (isGecerliPer(seciliTaslar)) {
+            seciliTaslar.forEach(t => toplamPuan += getTasPuan(t));
+        }
+
+        document.getElementById('canli-puan').innerText = `Seçili Per Puanı: ${toplamPuan}`;
+    }
+
+    function dragStart(e, index) {
+        draggedIndex = index;
+    }
+
+    function dropTas(e, targetIndex) {
+        e.preventDefault();
+        if (draggedIndex !== null && draggedIndex !== targetIndex) {
+            let temp = localIstaka[draggedIndex];
+            localIstaka[draggedIndex] = localIstaka[targetIndex];
+            localIstaka[targetIndex] = temp;
+            draggedIndex = null;
+            ekraniGuncelle();
+        }
+    }
+
     function tasCek() { yandanTasAldiMi = false; socket.emit('tasCek', benimKoltugum); }
     function yandanTasAl() { socket.emit('yandanTasAl', benimKoltugum); }
 
@@ -139,14 +226,39 @@
         document.getElementById('baraj-puan').innerText = state.enYuksekAcilanPuan + 1;
 
         if (state.okey) {
-            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}" style="width:28px; height:40px;">${state.okey.sayi}</div>`;
+            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}" style="width:24px; height:34px; font-size:11px;">${state.okey.sayi}</div>`;
         }
 
         if (state.sonAtilanTas) {
-            document.getElementById('son-atilan-tas').innerHTML = `<div class="tas ${state.sonAtilanTas.renk}" style="width:28px; height:40px;">${state.sonAtilanTas.sayi === 0 ? 'J' : state.sonAtilanTas.sayi}</div>`;
+            document.getElementById('son-atilan-tas').innerHTML = `<div class="tas ${state.sonAtilanTas.renk}" style="width:24px; height:34px; font-size:11px;">${state.sonAtilanTas.sayi === 0 ? 'J' : state.sonAtilanTas.sayi}</div>`;
         } else {
             document.getElementById('son-atilan-tas').innerHTML = '<small style="color:#aaa;">Yok</small>';
         }
+
+        // YERE AÇILAN SERİ VE ÇİFTLERİ ÇİZ
+        let serilerDiv = document.getElementById('masada-seriler');
+        let ciftlerDiv = document.getElementById('masada-ciftler');
+        serilerDiv.innerHTML = ''; ciftlerDiv.innerHTML = '';
+
+        state.oyuncular.forEach(o => {
+            o.acilanSeriler.forEach(grup => {
+                let gDiv = document.createElement('div');
+                gDiv.className = 'per-grubu-yeryuzu';
+                grup.forEach(t => {
+                    gDiv.innerHTML += `<div class="tas ${t.renk}" style="width:22px; height:32px; font-size:10px;">${t.sayi === 0 ? 'J' : t.sayi}</div>`;
+                });
+                serilerDiv.appendChild(gDiv);
+            });
+
+            o.acilanCiftler.forEach(pair => {
+                let cDiv = document.createElement('div');
+                cDiv.className = 'per-grubu-yeryuzu';
+                pair.forEach(t => {
+                    cDiv.innerHTML += `<div class="tas ${t.renk}" style="width:22px; height:32px; font-size:10px;">${t.sayi === 0 ? 'J' : t.sayi}</div>`;
+                });
+                ciftlerDiv.appendChild(cDiv);
+            });
+        });
 
         let rakiplerDiv = document.getElementById('rakipler-alan');
         rakiplerDiv.innerHTML = '';
@@ -172,6 +284,9 @@
             if (t) {
                 let tDiv = document.createElement('div');
                 tDiv.className = `tas ${t.renk} ${seciliIndices.includes(t.id) ? 'secili' : ''}`;
+                tDiv.draggable = true;
+                tDiv.ondragstart = (e) => dragStart(e, i);
+                
                 let htmlContent = t.sayi === 0 ? 'J' : t.sayi;
                 if (isOkey(t)) htmlContent += `<span class="okey-rozeti">★</span>`;
                 tDiv.innerHTML = htmlContent;
@@ -179,6 +294,7 @@
                 slot.appendChild(tDiv);
             }
         }
+        canliPuanHesapla();
     }
 
     function tasSec(tasId) {
@@ -190,11 +306,23 @@
 
     function perAc() {
         if (seciliIndices.length < 3) {
-            alert("Per açmak için en az 3 taş seçmelisin!");
+            alert("Seri açmak için en az 3 taş seçmelisin!");
             return;
         }
-        let acilacakIndices = seciliIndices.map(id => state.oyuncular[benimKoltugum].taslar.findIndex(t => t.id === id));
-        socket.emit('seriAc', { pIdx: benimKoltugum, seciliIndices: acilacakIndices });
+        socket.emit('seriAc', { pIdx: benimKoltugum, perGruplari: [seciliIndices] });
+        seciliIndices = [];
+    }
+
+    function ciftAc() {
+        if (seciliIndices.length % 2 !== 0 || seciliIndices.length < 2) {
+            alert("Çift açmak için çift sayıda (2, 4, 6...) taş seçmelisin!");
+            return;
+        }
+        let ciftGruplari = [];
+        for (let i = 0; i < seciliIndices.length; i += 2) {
+            ciftGruplari.push([seciliIndices[i], seciliIndices[i+1]]);
+        }
+        socket.emit('ciftAc', { pIdx: benimKoltugum, ciftGruplari: ciftGruplari });
         seciliIndices = [];
     }
 
@@ -229,12 +357,34 @@
         ekraniGuncelle();
     }
 
+    // SADECE AYNI RENK VE SAYIDAKİ ÇİFTLERİ YAN YANA DİZER
     function ciftDiz() {
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
-        taslar.sort((a, b) => a.sayi - b.sayi);
+        let ciftler = [];
+        let kalanlar = [];
+
+        let visited = new Set();
+        for (let i = 0; i < taslar.length; i++) {
+            if (visited.has(i)) continue;
+            let matchIdx = -1;
+            for (let j = i + 1; j < taslar.length; j++) {
+                if (!visited.has(j) && taslar[i].renk === taslar[j].renk && taslar[i].sayi === taslar[j].sayi) {
+                    matchIdx = j;
+                    break;
+                }
+            }
+            if (matchIdx !== -1) {
+                ciftler.push(taslar[i], taslar[matchIdx]);
+                visited.add(i); visited.add(matchIdx);
+            } else {
+                kalanlar.push(taslar[i]);
+            }
+        }
+
+        let yeniDizilim = [...ciftler, ...kalanlar];
         localIstaka = new Array(36).fill(null);
-        taslar.forEach((t, i) => localIstaka[i] = t);
+        yeniDizilim.forEach((t, i) => localIstaka[i] = t);
         seciliIndices = [];
         ekraniGuncelle();
     }
