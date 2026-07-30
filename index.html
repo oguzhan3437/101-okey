@@ -4,14 +4,196 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>101 Okey - 3 Kişilik</title>
-  <link rel="stylesheet" href="style.css">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: #1b4332; /* Masa çuhası yeşili */
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .game-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* OYUN MASASI DÜZENİ */
+    .game-board {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 170px);
+    }
+
+    /* OYUNCU SLOTLARI & ATILAN TAŞ BÖLGELERİ */
+    .player-slot {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .player-info {
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    /* Kendi Alanımız (P1 - Alt Kısım) */
+    .slot-p1 {
+      bottom: 20px;
+      right: 15%; /* Sağ tarafımızdaki taş atma alanı */
+    }
+
+    /* Sol-Üst Oyuncu (P2) */
+    .slot-p2 {
+      top: 40px;
+      left: 5%;
+    }
+
+    /* Sağ-Üst Oyuncu (P3) */
+    .slot-p3 {
+      top: 40px;
+      right: 5%;
+      flex-direction: row-reverse; /* Sağındaki oyuncunun sağına taş düşsün diye */
+    }
+
+    /* HER OYUNCUNUN SAĞINDAKİ TAŞ ATMA KUTUSU */
+    .discard-zone {
+      width: 50px;
+      height: 70px;
+      border: 2px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .discard-zone .zone-label {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* ORTA DESTE */
+    .center-deck-area {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .deck-stack {
+      width: 54px;
+      height: 76px;
+      background: #2b2b2b;
+      border: 2px solid #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    }
+
+    .deck-count {
+      position: absolute;
+      color: #fff;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    /* ISTAKA - GERÇEK BOYUT VE MERKEZLEME */
+    .rack-container {
+      width: 100%;
+      height: 160px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 12px;
+    }
+
+    .rack-wood {
+      width: min(90vw, 780px); /* Ekranın ortasına tam oturan ahşap ıstaka */
+      height: 135px;
+      background: linear-gradient(180deg, #5c3a21 0%, #3d2413 100%);
+      border: 4px solid #2b180b;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.7), inset 0 2px 5px rgba(255,255,255,0.2);
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .rack-row {
+      display: flex;
+      gap: 4px;
+      height: 58px;
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+
+    /* TAŞ GÖRÜNÜMÜ */
+    .tile {
+      width: 42px;
+      height: 56px;
+      background: #fdfbf7;
+      border-radius: 5px;
+      box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 18px;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .tile:hover {
+      transform: translateY(-4px);
+    }
+
+    /* Taş Renkleri */
+    .tile.kirmizi { color: #d62828; }
+    .tile.siyah { color: #000000; }
+    .tile.mavi { color: #0077b6; }
+    .tile.sari { color: #f2a900; }
+  </style>
 </head>
 <body>
+
   <div class="game-container">
     <!-- OYUN MASASI -->
     <div class="game-board">
       
-      <!-- ÜST/SOL OYUNCIU (P2) -->
+      <!-- OYUNCU 2 (SOL ÜST) -->
       <div class="player-slot slot-p2">
         <div class="player-info">
           <span class="avatar">👤</span>
@@ -23,7 +205,7 @@
         </div>
       </div>
 
-      <!-- ÜST/SAĞ OYUNCU (P3) -->
+      <!-- OYUNCU 3 (SAĞ ÜST) -->
       <div class="player-slot slot-p3">
         <!-- P3'ün Sağındaki Taş Atma Alanı -->
         <div class="discard-zone" id="discard-p3">
@@ -37,13 +219,11 @@
 
       <!-- ORTA DESTE VE OKEY BÖLGESİ -->
       <div class="center-deck-area">
-        <div class="deck-stack" id="draw-deck" onclick="drawTileFromDeck()">
+        <div class="deck-stack" id="draw-deck">
           <div class="tile tile-back">🂠</div>
           <span class="deck-count" id="deck-count">106</span>
         </div>
-        <div class="indicator-tile-box" id="indicator-box">
-          <!-- Gösterge taşı buraya gelecek -->
-        </div>
+        <div class="indicator-tile-box" id="indicator-box"></div>
       </div>
 
       <!-- SİZ (P1 - BAZ OYUNCU) -->
@@ -65,6 +245,42 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script>
+    // OYUN DURUMU (STATE)
+    let gameState = {
+      myId: 'p1',
+      lastDiscarded: { p1: null, p2: null, p3: null }
+    };
+
+    // HER OYUNCUNUN ATTIĞI SON TAŞI GÜNCELLEME
+    function updateDiscardZone(playerId, tile) {
+      gameState.lastDiscarded[playerId] = tile;
+      const zoneElem = document.getElementById(`discard-${playerId}`);
+
+      if (!tile) {
+        zoneElem.innerHTML = `<span class="zone-label">Atılan</span>`;
+        return;
+      }
+
+      zoneElem.innerHTML = renderTileHTML(tile);
+    }
+
+    // TAŞ HTML KODUNU ÜRETME
+    function renderTileHTML(tile) {
+      return `
+        <div class="tile ${tile.color}">
+          <span>${tile.value}</span>
+        </div>
+      `;
+    }
+
+    // TEST İÇİN BAŞLANGIÇ GÖRÜNÜMÜ
+    window.onload = () => {
+      // Örnek: Masada atılan son taşların testi
+      updateDiscardZone('p2', { color: 'kirmizi', value: 7 });
+      updateDiscardZone('p3', { color: 'mavi', value: 11 });
+      updateDiscardZone('p1', { color: 'siyah', value: 3 });
+    };
+  </script>
 </body>
 </html>
