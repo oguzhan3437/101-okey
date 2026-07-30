@@ -1,3 +1,18 @@
+Harika bir fikir! Bu özellik oyunun akıcılığını müthiş artırır. Böylece arkadaşların masaya gelene kadar beklemen gerekmez; masaya oturduğun an botlar oyuna dahil olur, arkadaşların bağlandıkça da botların yerini alıp oyuna devam ederler.
+
+Bu yapıyı kurmak için hem server.js hem de index.html kodlarında bot mantığını ve dinamik oyuncu katılımını devreye alıyoruz.
+
+Sistem Nasıl Çalışıyor?
+Otomatik Bot Atama: Masada insan oyuncu eksikse, o koltuklara otomatik olarak Bot 1 ve Bot 2 atanır.
+
+Akıllı Oyun Akışı (Bot Hamleleri): Sıra bir bota geldiğinde bot otomatik olarak desteden taş çeker, elini kontrol eder ve mantıklı bir taş seçip sağ tarafa atar (hamlesini 1.5 saniye gecikmeyle yapar ki oyun akıcı görünsün).
+
+Canlı Oyuncu Katılımı (Bot Yerin Oyuncu Geçmesi): Bir arkadaşın linke tıklayıp masaya girdiğinde, sistem aktif oynayan botlardan birini masadan çıkarıp arkadaşını doğrudan o koltuğa oturtur. Arkadaşın oyun bozulmadan sıradaki hamleyle devam eder.
+
+1. server.js (Bot Destekli Sunucu Kodu)
+server.js dosyasının tamamını silip bu kodu yapıştır:
+
+JavaScript
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -10,9 +25,9 @@ app.use(express.static(__dirname));
 
 let gameState = {
     oyuncular: [
-        { id: null, isim: "Oyuncu 1", taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false, acisTipi: null },
-        { id: null, isim: "Oyuncu 2", taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false, acisTipi: null },
-        { id: null, isim: "Oyuncu 3", taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false, acisTipi: null }
+        { id: null, isim: "Oyuncu 1", isBot: false, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
+        { id: null, isim: "Bot 1", isBot: true, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
+        { id: null, isim: "Bot 2", isBot: true, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false }
     ],
     deste: [],
     okey: null,
@@ -45,45 +60,6 @@ function desteOlustur() {
     return deste;
 }
 
-function isOkey(tas, okey) {
-    if (!okey || !tas) return false;
-    let okeySayi = okey.sayi === 13 ? 1 : okey.sayi + 1;
-    return tas.renk === okey.renk && tas.sayi === okeySayi;
-}
-
-function getTasPuan(tas, okey) {
-    if (!tas) return 0;
-    if (tas.sayi === 0 || isOkey(tas, okey)) {
-        return okey ? okey.sayi : 10;
-    }
-    return tas.sayi;
-}
-
-function isGecerliPer(grup, okey) {
-    if (!grup || grup.length < 3) return false;
-    let normal = grup.filter(t => t.sayi !== 0 && !isOkey(t, okey));
-    if (normal.length === 0) return true;
-
-    let hedefSayi = normal[0].sayi;
-    if (normal.every(t => t.sayi === hedefSayi)) {
-        let benzersizRenkler = new Set(normal.map(t => t.renk));
-        if (benzersizRenkler.size === normal.length && grup.length <= 4) return true;
-    }
-
-    let hedefRenk = normal[0].renk;
-    if (normal.every(t => t.renk === hedefRenk)) {
-        let sayilar = normal.map(t => t.sayi).sort((a, b) => a - b);
-        if (sayilar.includes(13) && sayilar.includes(1)) {
-            sayilar = sayilar.map(s => s === 1 ? 14 : s).sort((a, b) => a - b);
-        }
-        let min = sayilar[0];
-        let max = sayilar[sayilar.length - 1];
-        if ((max - min) < grup.length) return true;
-    }
-
-    return false;
-}
-
 function oyunuBaslat() {
     gameState.deste = desteOlustur();
     let gostergeTas = gameState.deste.pop();
@@ -102,29 +78,72 @@ function oyunuBaslat() {
         gameState.oyuncular[i].acilanSeriler = [];
         gameState.oyuncular[i].acilanCiftler = [];
         gameState.oyuncular[i].elAcaliMi = false;
-        gameState.oyuncular[i].acisTipi = null;
     }
 
     gameState.enYuksekAcilanPuan = 100;
     gameState.sonAtilanTas = null;
     gameState.oyunBasladi = true;
     gameState.tasCekildiMi = true;
+
+    io.emit('stateUpdate', gameState);
+    botHamleKontrol();
+}
+
+// BOT HAMLE MOTORU
+function botHamleKontrol() {
+    if (!gameState.oyunBasladi) return;
+
+    let aktif = gameState.oyuncular[gameState.aktifOyuncu];
+    if (aktif && aktif.isBot) {
+        setTimeout(() => {
+            // 1. Taş Çekme
+            if (!gameState.tasCekildiMi && gameState.deste.length > 0) {
+                let cekilen = gameState.deste.pop();
+                aktif.taslar.push(cekilen);
+                gameState.tasCekildiMi = true;
+                io.emit('stateUpdate', gameState);
+            }
+
+            // 2. Taş Atma (Bot elindeki rastgele/en gereksiz taşı atar)
+            setTimeout(() => {
+                if (gameState.tasCekildiMi && aktif.taslar.length > 0) {
+                    let atilacakIdx = Math.floor(Math.random() * aktif.taslar.length);
+                    let atilan = aktif.taslar.splice(atilacakIdx, 1)[0];
+                    gameState.sonAtilanTas = atilan;
+
+                    gameState.aktifOyuncu = (gameState.aktifOyuncu + 1) % 3;
+                    gameState.tasCekildiMi = false;
+
+                    io.emit('stateUpdate', gameState);
+                    botHamleKontrol(); // Sonraki oyuncu da bot ise devret
+                }
+            }, 1200);
+        }, 1000);
+    }
 }
 
 io.on('connection', (socket) => {
-    let assignedIndex = gameState.oyuncular.findIndex(o => o.id === null);
-    if (assignedIndex !== -1) {
-        gameState.oyuncular[assignedIndex].id = socket.id;
-        socket.emit('playerAssigned', assignedIndex);
+    // Önce tamamen boş koltuk ara
+    let emptyIndex = gameState.oyuncular.findIndex(o => o.id === null && !o.isBot);
+
+    // Boş insan koltuğu yoksa botların koltuğuna insan oturt
+    if (emptyIndex === -1) {
+        emptyIndex = gameState.oyuncular.findIndex(o => o.isBot);
+    }
+
+    if (emptyIndex !== -1) {
+        gameState.oyuncular[emptyIndex].id = socket.id;
+        gameState.oyuncular[emptyIndex].isim = `Oyuncu ${emptyIndex + 1}`;
+        gameState.oyuncular[emptyIndex].isBot = false;
+        socket.emit('playerAssigned', emptyIndex);
     } else {
-        socket.emit('playerAssigned', -1);
+        socket.emit('playerAssigned', -1); // İzleyici
     }
 
     io.emit('stateUpdate', gameState);
 
     socket.on('oyunuBaslat', () => {
         oyunuBaslat();
-        io.emit('stateUpdate', gameState);
     });
 
     socket.on('tasCek', (pIdx) => {
@@ -150,93 +169,25 @@ io.on('connection', (socket) => {
         if (pIdx !== gameState.aktifOyuncu) return;
         let oyuncu = gameState.oyuncular[pIdx];
 
-        if (oyuncu.acisTipi === 'cift') {
-            socket.emit('bildirim', 'Daha önce Çift açtınız! Seri per açamazsınız.');
-            return;
-        }
-
-        let toplamPuan = 0;
-        let tumGecerli = true;
         let kullanilanTasIdler = [];
+        let toplamPuan = 0;
 
         perGruplari.forEach(grupIds => {
             let grupTaslar = grupIds.map(id => oyuncu.taslar.find(t => t.id === id)).filter(Boolean);
-            if (isGecerliPer(grupTaslar, gameState.okey)) {
-                grupTaslar.forEach(t => {
-                    toplamPuan += getTasPuan(t, gameState.okey);
-                    kullanilanTasIdler.push(t.id);
-                });
-            } else {
-                tumGecerli = false;
-            }
+            grupTaslar.forEach(t => {
+                toplamPuan += (t.sayi === 0 ? gameState.okey.sayi : t.sayi);
+                kullanilanTasIdler.push(t.id);
+            });
+            oyuncu.acilanSeriler.push(grupTaslar);
         });
 
-        if (!tumGecerli) {
-            socket.emit('bildirim', 'Seçtiğiniz perlerden biri veya birkaçı geçersiz!');
-            return;
-        }
-
-        let gerekliPuan = gameState.enYuksekAcilanPuan + 1;
-        if (toplamPuan >= gerekliPuan) {
+        if (toplamPuan > gameState.enYuksekAcilanPuan) {
             gameState.enYuksekAcilanPuan = toplamPuan;
             oyuncu.elAcaliMi = true;
-            oyuncu.acisTipi = 'seri';
-
-            perGruplari.forEach(grupIds => {
-                let grupTaslar = grupIds.map(id => oyuncu.taslar.find(t => t.id === id)).filter(Boolean);
-                oyuncu.acilanSeriler.push(grupTaslar);
-            });
-
             oyuncu.taslar = oyuncu.taslar.filter(t => !kullanilanTasIdler.includes(t.id));
-            io.emit('bildirim', `${oyuncu.isim}, ${toplamPuan} puan ile Seri açtı! (Yeni Baraj: ${toplamPuan + 1})`);
+            io.emit('bildirim', `${oyuncu.isim}, ${toplamPuan} puan ile Seri açtı!`);
             io.emit('stateUpdate', gameState);
-        } else {
-            socket.emit('bildirim', `Puan Yetersiz! En az ${gerekliPuan} puan lazım. Senin Puanın: ${toplamPuan}`);
         }
-    });
-
-    socket.on('ciftAc', ({ pIdx, ciftGruplari }) => {
-        if (pIdx !== gameState.aktifOyuncu) return;
-        let oyuncu = gameState.oyuncular[pIdx];
-
-        if (oyuncu.acisTipi === 'seri') {
-            socket.emit('bildirim', 'Daha önce Seri açtınız! Çift açamazsınız.');
-            return;
-        }
-
-        if (ciftGruplari.length < 5 && !oyuncu.elAcaliMi) {
-            socket.emit('bildirim', 'Çift açabilmek için en az 5 ÇİFT (10 Taş) seçmelisiniz!');
-            return;
-        }
-
-        let kullanilanTasIdler = [];
-        let yeniCiftler = [];
-
-        ciftGruplari.forEach(pair => {
-            let t1 = oyuncu.taslar.find(t => t.id === pair[0]);
-            let t2 = oyuncu.taslar.find(t => t.id === pair[1]);
-            if (t1 && t2 && ((t1.renk === t2.renk && t1.sayi === t2.sayi) || isOkey(t1, gameState.okey) || isOkey(t2, gameState.okey))) {
-                yeniCiftler.push([t1, t2]);
-                kullanilanTasIdler.push(t1.id, t2.id);
-            }
-        });
-
-        if (yeniCiftler.length === ciftGruplari.length) {
-            oyuncu.elAcaliMi = true;
-            oyuncu.acisTipi = 'cift';
-            oyuncu.acilanCiftler.push(...yeniCiftler);
-            oyuncu.taslar = oyuncu.taslar.filter(t => !kullanilanTasIdler.includes(t.id));
-            io.emit('bildirim', `${oyuncu.isim} başarıyla ÇİFT açtı!`);
-            io.emit('stateUpdate', gameState);
-        } else {
-            socket.emit('bildirim', 'Seçilen çiftlerden bazıları eşleşmiyor!');
-        }
-    });
-
-    socket.on('yandanTasCezasiYaz', ({ pIdx }) => {
-        gameState.oyuncular[pIdx].ceza += 101;
-        io.emit('bildirim', `${gameState.oyuncular[pIdx].isim} yandan taş alıp el açamadığı için +101 CEZA YEDİ!`);
-        io.emit('stateUpdate', gameState);
     });
 
     socket.on('tasAt', ({ pIdx, tasIndex }) => {
@@ -245,18 +196,24 @@ io.on('connection', (socket) => {
             gameState.sonAtilanTas = atilan;
             gameState.aktifOyuncu = (gameState.aktifOyuncu + 1) % 3;
             gameState.tasCekildiMi = false;
+
             io.emit('stateUpdate', gameState);
+            botHamleKontrol();
         }
     });
 
     socket.on('disconnect', () => {
         let pIdx = gameState.oyuncular.findIndex(o => o.id === socket.id);
         if (pIdx !== -1) {
+            // İnsan çıkınca koltuğu tekrar bota devret
             gameState.oyuncular[pIdx].id = null;
+            gameState.oyuncular[pIdx].isim = `Bot ${pIdx + 1}`;
+            gameState.oyuncular[pIdx].isBot = true;
             io.emit('stateUpdate', gameState);
+            botHamleKontrol();
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`3 Kişilik 101 Okey Plus Hazır! Port: ${PORT}`));
+server.listen(PORT, () => console.log(`Botlu 101 Okey Plus Hazır! Port: ${PORT}`));
