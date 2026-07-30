@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -8,192 +9,118 @@ const io = new Server(server);
 
 app.use(express.static(__dirname));
 
-let gameState = {
-    oyuncular: [
-        { id: null, isim: "Oyuncu 1", isBot: false, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
-        { id: null, isim: "Bot 1", isBot: true, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false },
-        { id: null, isim: "Bot 2", isBot: true, taslar: [], ceza: 0, acilanSeriler: [], acilanCiftler: [], elAcaliMi: false }
-    ],
-    deste: [],
-    okey: null,
-    gosterge: null,
-    aktifOyuncu: 0,
-    sonAtilanTas: null,
-    enYuksekAcilanPuan: 100,
-    oyunBasladi: false,
-    tasCekildiMi: false
-};
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-function desteOlustur() {
-    let renkler = ['kirmizi', 'siyah', 'mavi', 'sari'];
-    let deste = [];
-    let idCounter = 1;
+// OYUN VERİ YAPISI
+let players = [];
+let deck = [];
+let indicatorTile = null;
+let discards = { p1: null, p2: null, p3: null };
 
+// 101 OKEY DESTE OLUŞTURMA
+function createDeck() {
+  const colors = ['kirmizi', 'siyah', 'mavi', 'sari'];
+  let newDeck = [];
+
+  // Her renkten 1-13 arası çift seri
+  colors.forEach(color => {
     for (let set = 0; set < 2; set++) {
-        renkler.forEach(renk => {
-            for (let i = 1; i <= 13; i++) {
-                deste.push({ id: idCounter++, renk: renk, sayi: i });
-            }
-        });
-        deste.push({ id: idCounter++, renk: 'sahte', sayi: 0 });
+      for (let value = 1; value <= 13; value++) {
+        newDeck.push({ color, value });
+      }
     }
+  });
 
-    for (let i = deste.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [deste[i], deste[j]] = [deste[j], deste[i]];
-    }
-    return deste;
+  // 2 Adet Sahte Okey (Joker)
+  newDeck.push({ color: 'joker', value: '★' });
+  newDeck.push({ color: 'joker', value: '★' });
+
+  // Karıştır (Fisher-Yates)
+  for (let i = newDeck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+  }
+
+  return newDeck;
 }
 
-function oyunuBaslat() {
-    gameState.deste = desteOlustur();
-    let gostergeTas = gameState.deste.pop();
-    while (gostergeTas.sayi === 0) {
-        gameState.deste.unshift(gostergeTas);
-        gostergeTas = gameState.deste.pop();
-    }
-    gameState.gosterge = gostergeTas;
-    let okeySayi = gostergeTas.sayi === 13 ? 1 : gostergeTas.sayi + 1;
-    gameState.okey = { renk: gostergeTas.renk, sayi: okeySayi };
+// OYUNU BAŞLATMA
+function startNewGame() {
+  deck = createDeck();
+  indicatorTile = deck.pop(); // Gösterge seç
+  discards = { p1: null, p2: null, p3: null };
 
-    gameState.aktifOyuncu = 0;
-    for (let i = 0; i < 3; i++) {
-        let tasSayisi = (i === gameState.aktifOyuncu) ? 22 : 21;
-        gameState.oyuncular[i].taslar = gameState.deste.splice(0, tasSayisi);
-        gameState.oyuncular[i].acilanSeriler = [];
-        gameState.oyuncular[i].acilanCiftler = [];
-        gameState.oyuncular[i].elAcaliMi = false;
-    }
+  // Oyunculara taş dağıtma (101 Okey: Oyunculara 21'er taş, başlayana 22)
+  players.forEach((player, index) => {
+    const tileCount = index === 0 ? 22 : 21;
+    player.hand = deck.splice(0, tileCount);
+    
+    // Her oyuncuya kendi kartlarını gönder
+    io.to(player.id).emit('initGame', {
+      hand: player.hand,
+      indicator: indicatorTile,
+      playerId: `p${index + 1}`
+    });
+  });
 
-    gameState.enYuksekAcilanPuan = 100;
-    gameState.sonAtilanTas = null;
-    gameState.oyunBasladi = true;
-    gameState.tasCekildiMi = true;
-
-    io.emit('stateUpdate', gameState);
-    botHamleKontrol();
+  broadcastGameState();
 }
 
-// BOT HAMLE MOTORU
-function botHamleKontrol() {
-    if (!gameState.oyunBasladi) return;
-
-    let aktif = gameState.oyuncular[gameState.aktifOyuncu];
-    if (aktif && aktif.isBot) {
-        setTimeout(() => {
-            if (!gameState.tasCekildiMi && gameState.deste.length > 0) {
-                let cekilen = gameState.deste.pop();
-                aktif.taslar.push(cekilen);
-                gameState.tasCekildiMi = true;
-                io.emit('stateUpdate', gameState);
-            }
-
-            setTimeout(() => {
-                if (gameState.tasCekildiMi && aktif.taslar.length > 0) {
-                    let atilacakIdx = Math.floor(Math.random() * aktif.taslar.length);
-                    let atilan = aktif.taslar.splice(atilacakIdx, 1)[0];
-                    gameState.sonAtilanTas = atilan;
-
-                    gameState.aktifOyuncu = (gameState.aktifOyuncu + 1) % 3;
-                    gameState.tasCekildiMi = false;
-
-                    io.emit('stateUpdate', gameState);
-                    botHamleKontrol();
-                }
-            }, 1200);
-        }, 1000);
-    }
+function broadcastGameState() {
+  io.emit('updateGameState', {
+    deckCount: deck.length,
+    discards: discards,
+    players: players.map((p, idx) => ({ id: p.id, name: `Oyuncu ${idx + 1}` }))
+  });
 }
 
+// SOCKET BAĞLANTILARI
 io.on('connection', (socket) => {
-    let emptyIndex = gameState.oyuncular.findIndex(o => o.id === null && !o.isBot);
+  console.log('Yeni oyuncu katıldı:', socket.id);
 
-    if (emptyIndex === -1) {
-        emptyIndex = gameState.oyuncular.findIndex(o => o.isBot);
-    }
+  if (players.length < 3) {
+    players.push({ id: socket.id, hand: [] });
 
-    if (emptyIndex !== -1) {
-        gameState.oyuncular[emptyIndex].id = socket.id;
-        gameState.oyuncular[emptyIndex].isim = `Oyuncu ${emptyIndex + 1}`;
-        gameState.oyuncular[emptyIndex].isBot = false;
-        socket.emit('playerAssigned', emptyIndex);
+    if (players.length === 3) {
+      startNewGame();
     } else {
-        socket.emit('playerAssigned', -1);
+      broadcastGameState();
     }
+  }
 
-    io.emit('stateUpdate', gameState);
+  // TAŞ ÇEKME
+  socket.on('drawTile', () => {
+    if (deck.length > 0) {
+      const drawnTile = deck.pop();
+      socket.emit('tileDrawn', drawnTile);
+      broadcastGameState();
+    }
+  });
 
-    socket.on('oyunuBaslat', () => {
-        oyunuBaslat();
-    });
+  // TAŞ ATMA
+  socket.on('throwTile', (data) => {
+    const playerIndex = players.findIndex(p => p.id === socket.id);
+    if (playerIndex !== -1) {
+      const pKey = `p${playerIndex + 1}`;
+      discards[pKey] = data.tile;
+      broadcastGameState();
+    }
+  });
 
-    socket.on('tasCek', (pIdx) => {
-        if (pIdx === gameState.aktifOyuncu && !gameState.tasCekildiMi && gameState.deste.length > 0) {
-            let cekilen = gameState.deste.pop();
-            gameState.oyuncular[pIdx].taslar.push(cekilen);
-            gameState.tasCekildiMi = true;
-            io.emit('stateUpdate', gameState);
-        }
-    });
-
-    socket.on('yandanTasAl', (pIdx) => {
-        if (pIdx === gameState.aktifOyuncu && !gameState.tasCekildiMi && gameState.sonAtilanTas) {
-            gameState.oyuncular[pIdx].taslar.push(gameState.sonAtilanTas);
-            gameState.sonAtilanTas = null;
-            gameState.tasCekildiMi = true;
-            socket.emit('yandanTasAldiBildir');
-            io.emit('stateUpdate', gameState);
-        }
-    });
-
-    socket.on('seriAc', ({ pIdx, perGruplari }) => {
-        if (pIdx !== gameState.aktifOyuncu) return;
-        let oyuncu = gameState.oyuncular[pIdx];
-
-        let kullanilanTasIdler = [];
-        let toplamPuan = 0;
-
-        perGruplari.forEach(grupIds => {
-            let grupTaslar = grupIds.map(id => oyuncu.taslar.find(t => t.id === id)).filter(Boolean);
-            grupTaslar.forEach(t => {
-                toplamPuan += (t.sayi === 0 ? gameState.okey.sayi : t.sayi);
-                kullanilanTasIdler.push(t.id);
-            });
-            oyuncu.acilanSeriler.push(grupTaslar);
-        });
-
-        if (toplamPuan > gameState.enYuksekAcilanPuan) {
-            gameState.enYuksekAcilanPuan = toplamPuan;
-            oyuncu.elAcaliMi = true;
-            oyuncu.taslar = oyuncu.taslar.filter(t => !kullanilanTasIdler.includes(t.id));
-            io.emit('bildirim', `${oyuncu.isim}, ${toplamPuan} puan ile Seri açtı!`);
-            io.emit('stateUpdate', gameState);
-        }
-    });
-
-    socket.on('tasAt', ({ pIdx, tasIndex }) => {
-        if (pIdx === gameState.aktifOyuncu && gameState.tasCekildiMi) {
-            let atilan = gameState.oyuncular[pIdx].taslar.splice(tasIndex, 1)[0];
-            gameState.sonAtilanTas = atilan;
-            gameState.aktifOyuncu = (gameState.aktifOyuncu + 1) % 3;
-            gameState.tasCekildiMi = false;
-
-            io.emit('stateUpdate', gameState);
-            botHamleKontrol();
-        }
-    });
-
-    socket.on('disconnect', () => {
-        let pIdx = gameState.oyuncular.findIndex(o => o.id === socket.id);
-        if (pIdx !== -1) {
-            gameState.oyuncular[pIdx].id = null;
-            gameState.oyuncular[pIdx].isim = `Bot ${pIdx + 1}`;
-            gameState.oyuncular[pIdx].isBot = true;
-            io.emit('stateUpdate', gameState);
-            botHamleKontrol();
-        }
-    });
+  // AYRILMA
+  socket.on('disconnect', () => {
+    console.log('Oyuncu ayrıldı:', socket.id);
+    players = players.filter(p => p.id !== socket.id);
+    if (players.length === 0) {
+      deck = [];
+    }
+    broadcastGameState();
+  });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`3 Kişilik 101 Okey Plus Hazır! Port: ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Sunucu ${PORT} portunda aktif!`);
+});
