@@ -2,126 +2,214 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>3 Kişilik Online 101 Okey</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3 Kişilik 101 Okey</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #2e7d32; color: white; padding: 20px; }
-        .mosa { background-color: #1b5e20; border: 2px solid #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .oyuncu { background-color: #388e3c; border: 1px solid #a5d6a7; padding: 15px; margin: 15px 0; border-radius: 8px; }
-        .oyuncu.aktif { border: 3px solid #ffeb3b; background-color: #2e7d32; }
-        .tas-kutu { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 60px; background: rgba(0,0,0,0.15); padding: 5px; border-radius: 5px; }
-        .tas { width: 38px; height: 54px; background-color: #fffde7; color: #000; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid #333; cursor: pointer; user-select: none; font-size: 18px; }
-        .tas.secili { transform: translateY(-10px); border: 2px solid #d32f2f; background-color: #fff9c4; }
-        .kirmizi { color: #d32f2f; } .siyah { color: #212121; } .mavi { color: #1976d2; } .sari { color: #fbc02d; }
-        button { padding: 8px 12px; font-size: 13px; cursor: pointer; background-color: #ffb300; border: none; border-radius: 5px; font-weight: bold; margin-right: 5px; }
-        .per-grup { display: inline-flex; gap: 3px; background: rgba(255,255,255,0.1); padding: 4px; border-radius: 4px; margin-right: 10px; cursor: pointer; border: 1px solid #fff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f380f; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        /* Masa Alanı */
+        .masa-container { flex: 1; display: grid; grid-template-rows: 80px 1fr 200px; padding: 10px; gap: 10px; }
+        
+        /* Üst Rakip Alanı */
+        .rakipler-alan { display: flex; justify-content: space-around; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; }
+        .rakip-kutu { background: #1f521f; border: 1px solid #3d8c3d; padding: 8px 15px; border-radius: 6px; text-align: center; }
+        .rakip-kutu.aktif { border: 2px solid #ffeb3b; box-shadow: 0 0 10px #ffeb3b; }
+
+        /* Orta Masa Alanı */
+        .orta-masa { display: flex; justify-content: space-around; align-items: center; background: #174217; border: 4px solid #0b290b; border-radius: 15px; padding: 10px; position: relative; }
+        .deste-alan, .gosterge-alan, .atilan-alan { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; text-align: center; min-width: 100px; }
+        
+        /* Istaka ve Oyuncu Alanı */
+        .oyuncu-alan { background: #3d2314; border-top: 5px solid #24140b; padding: 10px; border-radius: 12px 12px 0 0; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); }
+        .istaka-kontrol { display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Gerçek Istaka Görünümü */
+        .istaka { background: #5c3a21; border: 4px solid #382213; border-radius: 6px; padding: 10px; min-height: 110px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; box-shadow: inset 0 0 10px #000; }
+
+        /* Taş Tasarımı */
+        .tas { width: 36px; height: 50px; background: #fffdf0; border-radius: 4px; border-bottom: 3px solid #ccc; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; cursor: pointer; user-select: none; box-shadow: 1px 2px 4px rgba(0,0,0,0.4); position: relative; transition: transform 0.1s; }
+        .tas.secili { transform: translateY(-12px); border: 2px solid #e65100; background: #fff9c4; }
+        
+        .kirmizi { color: #d32f2f; }
+        .siyah { color: #212121; }
+        .mavi { color: #1976d2; }
+        .sari { color: #f57f17; }
+        .sahte { color: #8e24aa; }
+
+        /* Butonlar */
+        button { background: #ffb300; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; color: #333; }
+        button:hover { background: #ffa000; }
+        .btn-aksiyon { background: #4caf50; color: white; padding: 8px 16px; font-size: 14px; }
+        .btn-diz { background: #0288d1; color: white; }
+
+        /* Per Alanları */
+        .acilan-perler { display: flex; gap: 8px; flex-wrap: wrap; max-height: 80px; overflow-y: auto; }
+        .per-grup { display: flex; background: rgba(0,0,0,0.4); padding: 3px; border-radius: 4px; border: 1px solid #777; }
     </style>
 </head>
 <body>
 
-    <h1>3 Kişilik Canlı Online 101 Okey</h1>
-    <h2 id="koltuk-bilgisi" style="color: #ffeb3b;">Bağlanılıyor...</h2>
-    <button onclick="socket.emit('oyunuBaslat')">Yeni Oyun Başlat</button>
+<div class="masa-container">
+    <!-- Rakipler -->
+    <div class="rakipler-alan" id="rakipler-alan"></div>
 
-    <div class="mosa">
-        <p id="okey-bilgi">OKEY: - | Kalan Taş: -</p>
-        <p id="son-tas-bilgi">Atılan Taş: Yok</p>
-        <p id="sira-bilgi" style="font-size: 18px; font-weight: bold;">Sıra: -</p>
+    <!-- Orta Masa -->
+    <div class="orta-masa">
+        <div class="deste-alan">
+            <small>Deste</small>
+            <div id="kalan-tas" style="font-size: 20px; font-weight: bold;">-</div>
+            <button id="btn-tas-cek" style="display:none;" onclick="socket.emit('tasCek', benimKoltugum)">Taş Çek</button>
+        </div>
+
+        <div class="gosterge-alan">
+            <small>OKEY / Gösterge</small>
+            <div id="okey-tas"></div>
+        </div>
+
+        <div class="atilan-alan">
+            <small>Son Atılan Taş</small>
+            <div id="son-atilan-tas"></div>
+            <button id="btn-yandan-al" style="display:none; margin-top:4px;" onclick="socket.emit('yandanTasAl', benimKoltugum)">Yandan Al</button>
+        </div>
+
+        <div>
+            <button onclick="socket.emit('oyunuBaslat')">Oyunu / Eli Başlat</button>
+        </div>
     </div>
 
-    <div id="oyuncular"></div>
+    <!-- Benim Istakam ve Kontroller -->
+    <div class="oyuncu-alan">
+        <div class="istaka-kontrol">
+            <div>
+                <span id="benim-bilgi" style="font-weight: bold; color: #ffeb3b;">Oyuncu</span>
+                <span id="benim-puan" style="margin-left: 10px; font-size: 12px;">Seri Puanı: 0 | Ceza: 0</span>
+            </div>
+            <div>
+                <button class="btn-diz" onclick="seriDiz()">Seri Diz</button>
+                <button class="btn-diz" onclick="ciftDiz()">Çift Diz</button>
+                <button class="btn-aksiyon" id="btn-seri-ac" onclick="seriAc()">Seri Per Aç</button>
+                <button class="btn-aksiyon" style="background:#d32f2f;" onclick="tasAt()">Yere Taş At</button>
+            </div>
+        </div>
 
-    <script>
-        const socket = io();
-        let benimKoltugum = -1;
-        let seciliIndices = [];
-        let state = null;
+        <!-- Istaka -->
+        <div class="istaka" id="benim-istaka"></div>
+    </div>
+</div>
 
-        socket.on('playerAssigned', (index) => {
-            benimKoltugum = index;
-            document.getElementById('koltuk-bilgisi').innerText = index !== -1 ? `Masadaki Yerin: Oyuncu ${index + 1}` : "Masa Dolu (İzleyicisin)";
-        });
+<script>
+    const socket = io();
+    let benimKoltugum = -1;
+    let seciliIndices = [];
+    let state = null;
 
-        socket.on('bildirim', (msg) => alert(msg));
+    socket.on('playerAssigned', (index) => {
+        benimKoltugum = index;
+        document.getElementById('benim-bilgi').innerText = index !== -1 ? `Oyuncu ${index + 1} (SENSİN)` : "İzleyicisin";
+    });
 
-        socket.on('stateUpdate', (newState) => {
-            state = newState;
-            ekraniGuncelle();
-        });
+    socket.on('bildirim', (msg) => alert(msg));
 
-        function tasSec(idx) {
-            let pos = seciliIndices.indexOf(idx);
-            if (pos === -1) seciliIndices.push(idx);
-            else seciliIndices.splice(pos, 1);
-            ekraniGuncelle();
+    socket.on('stateUpdate', (newState) => {
+        state = newState;
+        ekraniGuncelle();
+    });
+
+    function tasSec(idx) {
+        let pos = seciliIndices.indexOf(idx);
+        if (pos === -1) seciliIndices.push(idx);
+        else seciliIndices.splice(pos, 1);
+        ekraniGuncelle();
+    }
+
+    function ekraniGuncelle() {
+        if (!state) return;
+
+        // Masa Bilgileri
+        document.getElementById('kalan-tas').innerText = state.deste.length;
+        
+        if (state.okey) {
+            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}">${state.okey.sayi}</div>`;
         }
 
-        function ekraniGuncelle() {
-            if (!state || !state.oyunBasladi) return;
+        if (state.sonAtilanTas) {
+            document.getElementById('son-atilan-tas').innerHTML = `<div class="tas ${state.sonAtilanTas.renk}">${state.sonAtilanTas.sayi}</div>`;
+        } else {
+            document.getElementById('son-atilan-tas').innerHTML = '<small>Yok</small>';
+        }
 
-            document.getElementById('okey-bilgi').innerText = `OKEY: ${state.okey.renk.toUpperCase()} ${state.okey.sayi} | Kalan Taş: ${state.deste.length}`;
-            document.getElementById('son-tas-bilgi').innerText = `Atılan Taş: ${state.sonAtilanTas ? state.sonAtilanTas.renk + ' ' + state.sonAtilanTas.sayi : 'Yok'}`;
-            document.getElementById('sira-bilgi').innerText = `Sıra: Oyuncu ${state.aktifOyuncu + 1}`;
+        // Rakipleri Çiz
+        let rakiplerDiv = document.getElementById('rakipler-alan');
+        rakiplerDiv.innerHTML = '';
+        state.oyuncular.forEach((o, idx) => {
+            if (idx !== benimKoltugum) {
+                let rDiv = document.createElement('div');
+                rDiv.className = `rakip-kutu ${idx === state.aktifOyuncu ? 'aktif' : ''}`;
+                rDiv.innerHTML = `
+                    <strong>${o.isim}</strong> <br>
+                    <small>Taş: ${o.taslar.length} | Ceza: ${o.ceza}</small>
+                `;
+                rakiplerDiv.appendChild(rDiv);
+            }
+        });
 
-            let div = document.getElementById('oyuncular');
-            div.innerHTML = '';
+        // Buton Durumları
+        let siraBende = (benimKoltugum === state.aktifOyuncu);
+        document.getElementById('btn-tas-cek').style.display = (siraBende && !state.tasCekildiMi) ? 'inline-block' : 'none';
+        document.getElementById('btn-yandan-al').style.display = (siraBende && !state.tasCekildiMi && state.sonAtilanTas) ? 'inline-block' : 'none';
 
-            state.oyuncular.forEach((o, idx) => {
-                let oDiv = document.createElement('div');
-                oDiv.className = `oyuncu ${idx === state.aktifOyuncu ? 'aktif' : ''}`;
-                oDiv.innerHTML = `<h3>${o.isim} ${idx === benimKoltugum ? '(SENSİN)' : ''} | Ceza: ${o.ceza} Puan | Seri Puanı: ${o.acilanPuan}</h3>`;
+        // Benim Istakam
+        if (benimKoltugum !== -1 && state.oyuncular[benimKoltugum]) {
+            let ben = state.oyuncular[benimKoltugum];
+            document.getElementById('benim-puan').innerText = `Seri Puanı: ${ben.acilanPuan} | Ceza: ${ben.ceza}`;
 
-                if (idx === benimKoltugum && idx === state.aktifOyuncu) {
-                    if (!state.tasCekildiMi) {
-                        oDiv.innerHTML += `<button onclick="socket.emit('tasCek', ${idx})">Desteden Taş Çek</button>`;
-                        if (state.sonAtilanTas) oDiv.innerHTML += `<button onclick="socket.emit('yandanTasAl', ${idx})">Yandan Taş Al</button>`;
-                    } else {
-                        oDiv.innerHTML += `<button onclick="socket.emit('seriAc', {pIdx: ${idx}, seciliIndices})">Seri Per Aç</button>`;
-                        oDiv.innerHTML += `<button onclick="tasAt(${idx})">Seçili Taşı Yere At</button>`;
-                    }
-                }
-
-                // Perler
-                let perDiv = document.createElement('div');
-                o.acilanSeriler.forEach((p, pIdx) => {
-                    let g = document.createElement('div');
-                    g.className = 'per-grup';
-                    g.onclick = () => periIsle(idx, pIdx, 'seri');
-                    p.forEach(t => g.innerHTML += `<span class="tas ${t.renk}" style="width:20px;height:30px;font-size:11px;">${t.sayi}</span>`);
-                    perDiv.appendChild(g);
-                });
-                oDiv.appendChild(perDiv);
-
-                // Eldeki Taşlar (Sadece kendi elimizi görürüz)
-                let tasKutu = document.createElement('div');
-                tasKutu.className = 'tas-kutu';
-                if (idx === benimKoltugum) {
-                    o.taslar.forEach((t, tIdx) => {
-                        let tDiv = document.createElement('div');
-                        tDiv.className = `tas ${t.renk} ${seciliIndices.includes(tIdx) ? 'secili' : ''}`;
-                        tDiv.innerText = t.sayi;
-                        tDiv.onclick = () => tasSec(tIdx);
-                        tasKutu.appendChild(tDiv);
-                    });
-                } else {
-                    tasKutu.innerHTML = `<small style="color:#ccc;">${o.taslar.length} Taş var (Gizli)</small>`;
-                }
-                oDiv.appendChild(tasKutu);
-                div.appendChild(oDiv);
+            let istakaDiv = document.getElementById('benim-istaka');
+            istakaDiv.innerHTML = '';
+            ben.taslar.forEach((t, tIdx) => {
+                let tDiv = document.createElement('div');
+                tDiv.className = `tas ${t.renk} ${seciliIndices.includes(tIdx) ? 'secili' : ''}`;
+                tDiv.innerText = t.sayi === 0 ? 'J' : t.sayi;
+                tDiv.onclick = () => tasSec(tIdx);
+                istakaDiv.appendChild(tDiv);
             });
         }
+    }
 
-        function tasAt(pIdx) {
-            if (seciliIndices.length !== 1) { alert("Sadece 1 taş seçmelisin!"); return; }
-            socket.emit('tasAt', { pIdx, tasIndex: seciliIndices[0] });
-            seciliIndices = [];
-        }
+    // Akıllı Otomatik Sıralama (Seri Diz)
+    function seriDiz() {
+        if (benimKoltugum === -1 || !state) return;
+        let taslar = state.oyuncular[benimKoltugum].taslar;
+        const renkSira = { 'kirmizi': 1, 'siyah': 2, 'mavi': 3, 'sari': 4, 'sahte': 5 };
+        taslar.sort((a, b) => {
+            if (renkSira[a.renk] !== renkSira[b.renk]) return renkSira[a.renk] - renkSira[b.renk];
+            return a.sayi - b.sayi;
+        });
+        seciliIndices = [];
+        ekraniGuncelle();
+    }
 
-        function periIsle(hedefOyuncu, perIndex, tip) {
-            if (seciliIndices.length !== 1) { alert("İşlemek için 1 taş seçmelisin!"); return; }
-            socket.emit('periIsle', { pIdx: benimKoltugum, hedefOyuncu, perIndex, tip, tasIndex: seciliIndices[0] });
-            seciliIndices = [];
-        }
-    </script>
+    // Akıllı Otomatik Sıralama (Çift Diz)
+    function ciftDiz() {
+        if (benimKoltugum === -1 || !state) return;
+        let taslar = state.oyuncular[benimKoltugum].taslar;
+        taslar.sort((a, b) => a.sayi - b.sayi);
+        seciliIndices = [];
+        ekraniGuncelle();
+    }
+
+    function tasAt() {
+        if (seciliIndices.length !== 1) { alert("Atmak için tam 1 taş seçmelisin!"); return; }
+        socket.emit('tasAt', { pIdx: benimKoltugum, tasIndex: seciliIndices[0] });
+        seciliIndices = [];
+    }
+
+    function seriAc() {
+        if (seciliIndices.length < 3) { alert("Seri açmak için en az 3 taş seçmelisin!"); return; }
+        socket.emit('seriAc', { pIdx: benimKoltugum, seciliIndices });
+        seciliIndices = [];
+    }
+</script>
 </body>
 </html>
