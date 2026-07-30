@@ -2,71 +2,37 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3 Kişilik 101 Okey Plus (Katlamalı & Cezalı)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3 Kişilik 101 Okey Plus</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: manipulation; }
-        body { background: #0a1f0a; color: white; display: flex; flex-direction: column; min-height: 100vh; height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; user-select: none; }
+        body { background: #0a1f0a; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        .masa-container { 
-            flex: 1; display: flex; flex-direction: column; padding: 8px; gap: 8px; height: 100vh; 
-            justify-content: space-between; background: radial-gradient(circle, #1e5c1e 0%, #0d2b0d 70%, #051405 100%); 
-            box-shadow: inset 0 0 80px rgba(0,0,0,0.8);
-        }
+        .masa-container { flex: 1; display: flex; flex-direction: column; padding: 10px; justify-content: space-between; background: radial-gradient(circle, #1e5c1e 0%, #051405 100%); }
+        .rakipler-alan { display: flex; justify-content: space-around; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; }
+        .rakip-kutu { background: rgba(18, 51, 18, 0.9); border: 1px solid #2e7d32; padding: 6px 16px; border-radius: 8px; text-align: center; }
+        .rakip-kutu.aktif { border: 2px solid #ffeb3b; box-shadow: 0 0 10px #ffeb3b; }
+
+        .orta-masa { display: flex; justify-content: space-around; align-items: center; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; }
+        .kutucuk { background: rgba(0,0,0,0.6); padding: 8px 14px; border-radius: 8px; text-align: center; font-size: 12px; border: 1px solid rgba(255, 179, 0, 0.4); }
+
+        .oyuncu-alan { background: #180d05; border-top: 3px solid #ffb300; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .istaka-kontrol { display: flex; justify-content: space-between; align-items: center; }
         
-        .rakipler-alan { display: flex; justify-content: space-around; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 10px; font-size: 12px; border: 1px solid rgba(255,255,255,0.1); }
-        .rakip-kutu { background: rgba(18, 51, 18, 0.8); border: 1px solid #2e7d32; padding: 4px 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .rakip-kutu.aktif { border: 2px solid #ffeb3b; box-shadow: 0 0 12px #ffeb3b; background: rgba(30, 77, 30, 0.9); }
+        .istaka-ve-atma { display: flex; gap: 10px; align-items: center; }
+        .ahsap-istaka { background: #3d220f; border: 3px solid #1a0d05; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-x: auto; }
+        .istaka-satir { display: flex; gap: 4px; background: #140a04; padding: 4px; border-radius: 4px; min-width: 600px; }
+        .yuva { width: 36px; height: 50px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 4px; }
 
-        .orta-masa { display: flex; justify-content: space-around; align-items: center; background: rgba(0,0,0,0.35); border: 2px solid #143d14; border-radius: 15px; padding: 10px; flex-wrap: wrap; gap: 8px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
-        .deste-alan, .gosterge-alan, .atilan-alan, .baraj-alan { background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 8px; text-align: center; font-size: 11px; border: 1px solid rgba(255, 179, 0, 0.3); }
-        
-        .oyuncu-alan { background: #180d05; border-top: 3px solid #ffb300; padding: 8px; border-radius: 12px 12px 0 0; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 -5px 20px rgba(0,0,0,0.7); }
-        .istaka-kontrol { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; }
-        
-        .puan-paneli { display: flex; gap: 6px; align-items: center; }
-        .plus-badge { background: #263238; color: #fff; padding: 4px 8px; border-radius: 5px; font-weight: bold; border: 1px solid #37474f; font-size: 11px; }
-        .secili-badge { background: #0288d1; color: #fff; padding: 4px 8px; border-radius: 5px; font-weight: bold; transition: background 0.3s; font-size: 11px; }
-        .secili-badge.hazir { background: #2e7d32 !important; box-shadow: 0 0 10px #4caf50; }
-
-        .istaka-ve-atma-container { display: flex; gap: 8px; align-items: center; width: 100%; }
-
-        .ahsap-istaka {
-            background: linear-gradient(180deg, #5c3417 0%, #3d220f 40%, #29160a 100%);
-            border: 4px solid #1a0d05; border-radius: 10px; padding: 6px; display: flex;
-            flex-direction: column; gap: 6px; flex: 1; overflow-x: auto;
-            box-shadow: inset 0 2px 5px rgba(255,255,255,0.1), 0 5px 15px rgba(0,0,0,0.6);
-        }
-
-        .istaka-satir { display: flex; gap: 4px; justify-content: flex-start; background: #140a04; padding: 5px; border-radius: 6px; min-width: 620px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
-        .yuva { width: 36px; height: 52px; border: 1px dashed rgba(255,255,255,0.08); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-
-        .tas {
-            width: 100%; height: 100%; background: linear-gradient(180deg, #ffffff 0%, #f4ebd9 80%, #e0d0b3 100%);
-            border-radius: 5px; border-bottom: 3px solid #b39b6e; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; font-weight: bold; font-size: 17px; cursor: pointer;
-            user-select: none; box-shadow: 0 3px 5px rgba(0,0,0,0.5); position: relative; transition: transform 0.15s ease;
-        }
-
-        .tas.secili { transform: translateY(-8px); border: 2px solid #ff6f00; background: #fffde7; }
-        
-        .okey-rozeti { position: absolute; top: 1px; right: 1px; font-size: 7px; background: #d32f2f; color: #ffeb3b; padding: 1px 2px; border-radius: 2px; font-weight: bold; line-height: 1; }
+        .tas { width: 100%; height: 100%; background: #f4ebd9; border-radius: 4px; border-bottom: 3px solid #b39b6e; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; cursor: pointer; color: #111; position: relative; }
+        .tas.secili { transform: translateY(-6px); border: 2px solid #ff6f00; background: #fffde7; }
+        .okey-rozeti { position: absolute; top: 1px; right: 1px; font-size: 7px; background: #d32f2f; color: #ffeb3b; padding: 1px; border-radius: 2px; }
 
         .kirmizi { color: #d32f2f; } .siyah { color: #111; } .mavi { color: #1976d2; } .sari { color: #f57f17; } .sahte { color: #7b1fa2; }
 
-        .sag-tas-atma-alani {
-            width: 80px; height: 118px; background: linear-gradient(180deg, #b71c1c 0%, #680a0a 100%);
-            border: 2px dashed #ffeb3b; border-radius: 10px; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold;
-            color: #fff; cursor: pointer; box-shadow: inset 0 0 10px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.5);
-            transition: all 0.2s ease; flex-shrink: 0;
-        }
-
-        button { background: #ffb300; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #111; font-size: 11px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-        button:hover { background: #ffa000; }
-        .btn-aksiyon { background: #4caf50; color: white; }
-        .btn-diz { background: #0288d1; color: white; }
+        .sag-tas-atma { width: 80px; height: 110px; background: #7f1d1d; border: 2px dashed #ffeb3b; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; cursor: pointer; }
+        button { background: #ffb300; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -75,58 +41,30 @@
     <div class="rakipler-alan" id="rakipler-alan"></div>
 
     <div class="orta-masa">
-        <div class="deste-alan">
-            <small>Deste</small>
-            <div id="kalan-tas" style="font-size: 16px; font-weight: bold; color: #ffeb3b;">-</div>
-            <button id="btn-tas-cek" style="display:none; margin-top:2px;" onclick="tasCek()">Taş Çek</button>
-        </div>
-
-        <div class="gosterge-alan">
-            <small>GÖSTERGE</small>
-            <div id="okey-tas"></div>
-        </div>
-
-        <div class="baraj-alan">
-            <small>AÇMA BARAJI</small>
-            <div id="baraj-puan" style="font-size: 16px; font-weight: bold; color: #4caf50;">101</div>
-        </div>
-
-        <div class="atilan-alan" id="yere-at-alani">
-            <small>Son Atılan</small>
-            <div id="son-atilan-tas"></div>
-            <button id="btn-yandan-al" style="display:none; margin-top:2px;" onclick="yandanTasAl()">Yandan Al</button>
-        </div>
-
-        <div>
-            <button onclick="socket.emit('oyunuBaslat')">Eli Başlat (3 Kişi)</button>
-        </div>
+        <div class="kutucuk">Deste<br><strong id="kalan-tas" style="color:#ffeb3b;">-</strong><br><button id="btn-tas-cek" style="display:none;" onclick="tasCek()">Taş Çek</button></div>
+        <div class="kutucuk">Gösterge<br><div id="okey-tas"></div></div>
+        <div class="kutucuk">Açma Barajı<br><strong id="baraj-puan" style="color:#4caf50;">101</strong></div>
+        <div class="kutucuk">Son Atılan<br><div id="son-atilan-tas"></div><button id="btn-yandan-al" style="display:none;" onclick="yandanTasAl()">Yandan Al</button></div>
+        <button onclick="socket.emit('oyunuBaslat')">Eli Başlat</button>
     </div>
 
     <div class="oyuncu-alan">
         <div class="istaka-kontrol">
-            <div class="puan-paneli">
-                <span id="benim-bilgi" style="font-weight: bold; color: #ffeb3b;">Oyuncu</span>
-                <span id="ceza-bilgi" class="plus-badge" style="color:#ff5252;">Ceza: 0</span>
-                <span id="secili-puan-bilgi" class="secili-badge">Açılan Per: 0</span>
-            </div>
+            <div><strong id="benim-bilgi" style="color:#ffeb3b;">Oyuncu</strong> | <span id="ceza-bilgi" style="color:#ff5252;">Ceza: 0</span></div>
             <div>
-                <button class="btn-diz" onclick="seriDiz()">Seri Diz</button>
-                <button class="btn-diz" onclick="ciftDiz()">Çift Diz</button>
-                <button class="btn-aksiyon" onclick="perAc()">Per Aç</button>
-                <button class="btn-aksiyon" style="background:#d32f2f;" onclick="tasAt()">Taş At</button>
+                <button onclick="seriDiz()">Seri Diz</button>
+                <button onclick="ciftDiz()">Çift Diz</button>
+                <button style="background:#4caf50; color:white;" onclick="perAc()">Per Aç</button>
+                <button style="background:#d32f2f; color:white;" onclick="tasAt()">Taş At</button>
             </div>
         </div>
 
-        <div class="istaka-ve-atma-container">
+        <div class="istaka-ve-atma">
             <div class="ahsap-istaka">
                 <div class="istaka-satir" id="ust-satir"></div>
                 <div class="istaka-satir" id="alt-satir"></div>
             </div>
-
-            <div class="sag-tas-atma-alani" onclick="tasAt()">
-                <span style="font-size: 18px;">📥</span>
-                <span>TAŞ AT</span>
-            </div>
+            <div class="sag-tas-atma" onclick="tasAt()">📥<br>TAŞ AT</div>
         </div>
     </div>
 </div>
@@ -159,10 +97,7 @@
     });
 
     socket.on('bildirim', (msg) => alert(msg));
-
-    socket.on('yandanTasAldiBildir', () => {
-        yandanTasAldiMi = true;
-    });
+    socket.on('yandanTasAldiBildir', () => { yandanTasAldiMi = true; });
 
     socket.on('stateUpdate', (newState) => {
         state = newState;
@@ -194,14 +129,8 @@
         return tas.renk === state.okey.renk && tas.sayi === okeySayi;
     }
 
-    function tasCek() {
-        yandanTasAldiMi = false;
-        socket.emit('tasCek', benimKoltugum);
-    }
-
-    function yandanTasAl() {
-        socket.emit('yandanTasAl', benimKoltugum);
-    }
+    function tasCek() { yandanTasAldiMi = false; socket.emit('tasCek', benimKoltugum); }
+    function yandanTasAl() { socket.emit('yandanTasAl', benimKoltugum); }
 
     function ekraniGuncelle() {
         if (!state) return;
@@ -210,11 +139,11 @@
         document.getElementById('baraj-puan').innerText = state.enYuksekAcilanPuan + 1;
 
         if (state.okey) {
-            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}" style="width:30px; height:44px;">${state.okey.sayi}</div>`;
+            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}" style="width:28px; height:40px;">${state.okey.sayi}</div>`;
         }
 
         if (state.sonAtilanTas) {
-            document.getElementById('son-atilan-tas').innerHTML = `<div class="tas ${state.sonAtilanTas.renk}" style="width:30px; height:44px;">${state.sonAtilanTas.sayi === 0 ? 'J' : state.sonAtilanTas.sayi}</div>`;
+            document.getElementById('son-atilan-tas').innerHTML = `<div class="tas ${state.sonAtilanTas.renk}" style="width:28px; height:40px;">${state.sonAtilanTas.sayi === 0 ? 'J' : state.sonAtilanTas.sayi}</div>`;
         } else {
             document.getElementById('son-atilan-tas').innerHTML = '<small style="color:#aaa;">Yok</small>';
         }
@@ -243,10 +172,8 @@
             if (t) {
                 let tDiv = document.createElement('div');
                 tDiv.className = `tas ${t.renk} ${seciliIndices.includes(t.id) ? 'secili' : ''}`;
-                
-                let okeyMi = isOkey(t);
                 let htmlContent = t.sayi === 0 ? 'J' : t.sayi;
-                if (okeyMi) htmlContent += `<span class="okey-rozeti">★OKEY</span>`;
+                if (isOkey(t)) htmlContent += `<span class="okey-rozeti">★</span>`;
                 tDiv.innerHTML = htmlContent;
                 tDiv.onclick = () => tasSec(t.id);
                 slot.appendChild(tDiv);
@@ -263,10 +190,9 @@
 
     function perAc() {
         if (seciliIndices.length < 3) {
-            alert("Lütfen açmak istediğin per için en az 3 taş seç!");
+            alert("Per açmak için en az 3 taş seçmelisin!");
             return;
         }
-
         let acilacakIndices = seciliIndices.map(id => state.oyuncular[benimKoltugum].taslar.findIndex(t => t.id === id));
         socket.emit('seriAc', { pIdx: benimKoltugum, seciliIndices: acilacakIndices });
         seciliIndices = [];
@@ -274,11 +200,10 @@
 
     function tasAt() {
         if (seciliIndices.length !== 1) { 
-            alert("Taş atmak için ıstakandan sadece 1 taş seçmelisin!"); 
+            alert("Atmak için 1 taş seçmelisin!"); 
             return; 
         }
 
-        // Yandan Taş Alıp Per Açamadan Taş Atma Cezası
         if (yandanTasAldiMi && !state.oyuncular[benimKoltugum].elAcaliMi) {
             socket.emit('yandanTasCezasiYaz', { pIdx: benimKoltugum });
         }
