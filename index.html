@@ -15,7 +15,7 @@
     }
 
     body {
-      background-color: #1b4332; /* Masa çuhası yeşili */
+      background-color: #1b4332;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       height: 100vh;
       overflow: hidden;
@@ -33,19 +33,26 @@
       justify-content: space-between;
     }
 
-    /* OYUN MASASI DÜZENİ */
     .game-board {
       position: relative;
       width: 100%;
-      height: calc(100vh - 170px);
+      height: calc(100vh - 180px);
     }
 
-    /* OYUNCU SLOTLARI & ATILAN TAŞ BÖLGELERİ */
     .player-slot {
       position: absolute;
       display: flex;
       align-items: center;
       gap: 15px;
+      padding: 8px;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .player-slot.active-turn {
+      background: rgba(255, 215, 0, 0.25);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+      border: 1px solid rgba(255, 215, 0, 0.8);
     }
 
     .player-info {
@@ -60,26 +67,10 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    /* Kendi Alanımız (P1 - Alt Kısım) */
-    .slot-p1 {
-      bottom: 20px;
-      right: 15%; /* Sağ tarafımızdaki taş atma alanı */
-    }
+    .slot-p1 { bottom: 20px; right: 15%; }
+    .slot-p2 { top: 40px; left: 5%; }
+    .slot-p3 { top: 40px; right: 5%; flex-direction: row-reverse; }
 
-    /* Sol-Üst Oyuncu (P2) */
-    .slot-p2 {
-      top: 40px;
-      left: 5%;
-    }
-
-    /* Sağ-Üst Oyuncu (P3) */
-    .slot-p3 {
-      top: 40px;
-      right: 5%;
-      flex-direction: row-reverse;
-    }
-
-    /* HER OYUNCUNUN SAĞINDAKİ TAŞ ATMA KUTUSU */
     .discard-zone {
       width: 50px;
       height: 70px;
@@ -90,15 +81,9 @@
       justify-content: center;
       align-items: center;
       position: relative;
-      transition: all 0.2s ease;
+      cursor: pointer;
     }
 
-    .discard-zone .zone-label {
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.4);
-    }
-
-    /* ORTA DESTE VE OKEY GÖSTERGESİ */
     .center-deck-area {
       position: absolute;
       top: 40%;
@@ -142,15 +127,48 @@
       background: rgba(0,0,0,0.1);
     }
 
-    /* ISTAKA - GERÇEK BOYUT VE MERKEZLEME */
+    .status-bar {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: #ffd700;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 14px;
+      border: 1px solid rgba(255,215,0,0.3);
+    }
+
     .rack-container {
       width: 100%;
-      height: 160px;
+      height: 170px;
       display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      padding-bottom: 12px;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding-bottom: 10px;
+      gap: 6px;
     }
+
+    .rack-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-sort {
+      background: #2d6a4f;
+      color: white;
+      border: 1px solid #52b788;
+      padding: 4px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .btn-sort:hover { background: #40916c; }
 
     .rack-wood {
       width: min(90vw, 780px);
@@ -175,7 +193,6 @@
       overflow-x: auto;
     }
 
-    /* TAŞ GÖRÜNÜMÜ */
     .tile {
       width: 42px;
       height: 56px;
@@ -193,16 +210,10 @@
       flex-shrink: 0;
     }
 
-    .tile:hover {
-      transform: translateY(-4px);
-    }
+    .tile:hover { transform: translateY(-4px); }
+    .tile.selected { border: 2px solid #ffb703; transform: translateY(-6px); }
+    .tile.is-okey { border: 2px solid #7209b7; background: #f0e6ff; }
 
-    .tile.selected {
-      border: 2px solid #ffb703;
-      transform: translateY(-6px);
-    }
-
-    /* Taş Renkleri */
     .tile.kirmizi { color: #d62828; }
     .tile.siyah { color: #000000; }
     .tile.mavi { color: #0077b6; }
@@ -213,27 +224,21 @@
 <body>
 
   <div class="game-container">
-    <!-- OYUN MASASI -->
+    <div id="status-bar" class="status-bar">Oyuncular Bekleniyor...</div>
+
     <div class="game-board">
-      
       <!-- OYUNCU 2 (SOL ÜST) -->
-      <div class="player-slot slot-p2">
+      <div class="player-slot slot-p2" id="slot-p2">
         <div class="player-info">
           <span class="avatar">👤</span>
           <span class="player-name" id="name-p2">Oyuncu 2 Bekleniyor...</span>
         </div>
-        <!-- P2'nin Sağındaki Taş Atma Alanı -->
-        <div class="discard-zone" id="discard-p2">
-          <span class="zone-label">Atılan</span>
-        </div>
+        <div class="discard-zone" id="discard-p2"><span class="zone-label">Atılan</span></div>
       </div>
 
       <!-- OYUNCU 3 (SAĞ ÜST) -->
-      <div class="player-slot slot-p3">
-        <!-- P3'ün Sağındaki Taş Atma Alanı -->
-        <div class="discard-zone" id="discard-p3">
-          <span class="zone-label">Atılan</span>
-        </div>
+      <div class="player-slot slot-p3" id="slot-p3">
+        <div class="discard-zone" id="discard-p3"><span class="zone-label">Atılan</span></div>
         <div class="player-info">
           <span class="avatar">👤</span>
           <span class="player-name" id="name-p3">Oyuncu 3 Bekleniyor...</span>
@@ -246,23 +251,23 @@
           <div class="tile tile-back">🂠</div>
           <span class="deck-count" id="deck-count">106</span>
         </div>
-        <div class="indicator-box" id="indicator-box">
-          <!-- Gösterge Taşı -->
-        </div>
+        <div class="indicator-box" id="indicator-box"></div>
       </div>
 
-      <!-- SİZ (P1 - BAZ OYUNCU) -->
-      <div class="player-slot slot-p1">
-        <!-- P1 (Sizin) Sağınızdaki Taş Atma Alanı -->
+      <!-- SİZ (P1) -->
+      <div class="player-slot slot-p1" id="slot-p1">
         <div class="discard-zone" id="discard-p1" onclick="throwSelectedTile()">
           <span class="zone-label">Atılan</span>
         </div>
       </div>
-
     </div>
 
-    <!-- ORTALANMIŞ GERÇEK BOYUTLU ISTAKA -->
+    <!-- ISTAKA VE SIRALAMA BUTONLARI -->
     <div class="rack-container">
+      <div class="rack-controls">
+        <button class="btn-sort" onclick="sortRack('seri')">Seri Sırala</button>
+        <button class="btn-sort" onclick="sortRack('cift')">Çift Sırala</button>
+      </div>
       <div class="rack-wood" id="player-rack">
         <div class="rack-row upper-row" id="rack-upper"></div>
         <div class="rack-row lower-row" id="rack-lower"></div>
@@ -276,8 +281,9 @@
     let myRack = [];
     let selectedTileIndex = null;
     let myPlayerId = null;
+    let currentTurn = null;
+    let okeyTile = null;
 
-    // SOCKET DINLEYICILERI
     socket.on('connect', () => {
       console.log("Sunucuya bağlandık:", socket.id);
     });
@@ -285,6 +291,8 @@
     socket.on('initGame', (data) => {
       myRack = data.hand || [];
       myPlayerId = data.playerId;
+      okeyTile = data.okey;
+
       renderRack();
       if(data.indicator) {
         document.getElementById('indicator-box').innerHTML = renderTileHTML(data.indicator);
@@ -295,14 +303,15 @@
       if (state.deckCount !== undefined) {
         document.getElementById('deck-count').innerText = state.deckCount;
       }
-      
-      // Oyuncu isimleri güncelleme
+
+      currentTurn = state.currentTurn;
+      updateTurnUI();
+
       if(state.players) {
         if(state.players[1]) document.getElementById('name-p2').innerText = state.players[1].name || "Oyuncu 2";
         if(state.players[2]) document.getElementById('name-p3').innerText = state.players[2].name || "Oyuncu 3";
       }
 
-      // Her oyuncunun attığı son taşları güncelle
       if (state.discards) {
         Object.keys(state.discards).forEach(pKey => {
           updateDiscardZone(pKey, state.discards[pKey]);
@@ -315,27 +324,59 @@
       renderRack();
     });
 
-    // TAŞ ÇEKME
+    socket.on('errorMessage', (msg) => {
+      alert(msg);
+    });
+
+    function updateTurnUI() {
+      ['p1', 'p2', 'p3'].forEach(p => {
+        const slot = document.getElementById(`slot-${p}`);
+        if(slot) slot.classList.remove('active-turn');
+      });
+
+      const activeSlot = document.getElementById(`slot-${currentTurn}`);
+      if(activeSlot) activeSlot.classList.add('active-turn');
+
+      const statusBar = document.getElementById('status-bar');
+      if (currentTurn === myPlayerId) {
+        statusBar.innerText = "Sıra Sizde! Taş Çekin veya Taş Atın.";
+        statusBar.style.color = "#52b788";
+      } else {
+        statusBar.innerText = `Sıra Diğer Oyuncuda (${currentTurn ? currentTurn.toUpperCase() : '...'})`;
+        statusBar.style.color = "#ffd700";
+      }
+    }
+
     function drawTile() {
+      if (currentTurn !== myPlayerId) {
+        alert("Sıra sizde değil!");
+        return;
+      }
       socket.emit('drawTile');
     }
 
-    // TAŞ SEÇME VE ATMA
     function selectTile(index) {
       selectedTileIndex = index;
       renderRack();
     }
 
     function throwSelectedTile() {
-      if (selectedTileIndex === null) return;
+      if (currentTurn !== myPlayerId) {
+        alert("Sıra sizde değil!");
+        return;
+      }
+      if (selectedTileIndex === null) {
+        alert("Lütfen önce atılacak taşı seçin!");
+        return;
+      }
+
       const thrownTile = myRack.splice(selectedTileIndex, 1)[0];
       selectedTileIndex = null;
       renderRack();
-      
+
       socket.emit('throwTile', { tile: thrownTile });
     }
 
-    // ATILAN TAŞ KUTULARINI GÜNCELLEME
     function updateDiscardZone(playerId, tile) {
       const zoneElem = document.getElementById(`discard-${playerId}`);
       if (!zoneElem) return;
@@ -348,19 +389,20 @@
       zoneElem.innerHTML = renderTileHTML(tile);
     }
 
-    // TAŞ HTML'I OLUŞTURMA
     function renderTileHTML(tile, index = null) {
       const isSelected = index === selectedTileIndex ? 'selected' : '';
       const clickAttr = index !== null ? `onclick="selectTile(${index})"` : '';
       
+      const isOkey = okeyTile && tile.color === okeyTile.color && tile.value === okeyTile.value;
+      const okeyClass = isOkey ? 'is-okey' : '';
+
       return `
-        <div class="tile ${tile.color} ${isSelected}" ${clickAttr}>
+        <div class="tile ${tile.color} ${isSelected} ${okeyClass}" ${clickAttr}>
           <span>${tile.value}</span>
         </div>
       `;
     }
 
-    // ISTAKAYI ÇİZME (Çift Sıra Mantığı)
     function renderRack() {
       const upperRow = document.getElementById('rack-upper');
       const lowerRow = document.getElementById('rack-lower');
@@ -379,6 +421,25 @@
       lowerTiles.forEach((tile, idx) => {
         lowerRow.innerHTML += renderTileHTML(tile, idx + half);
       });
+    }
+
+    // SIRALAMA MANTIKLARI
+    function sortRack(type) {
+      const colorOrder = { 'kirmizi': 1, 'siyah': 2, 'mavi': 3, 'sari': 4, 'joker': 5 };
+
+      if (type === 'seri') {
+        myRack.sort((a, b) => {
+          if (colorOrder[a.color] !== colorOrder[b.color]) {
+            return colorOrder[a.color] - colorOrder[b.color];
+          }
+          return (parseInt(a.value) || 99) - (parseInt(b.value) || 99);
+        });
+      } else if (type === 'cift') {
+        myRack.sort((a, b) => {
+          return (parseInt(a.value) || 99) - (parseInt(b.value) || 99);
+        });
+      }
+      renderRack();
     }
   </script>
 </body>
