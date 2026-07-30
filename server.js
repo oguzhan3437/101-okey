@@ -19,7 +19,7 @@ let gameState = {
     gosterge: null,
     aktifOyuncu: 0,
     sonAtilanTas: null,
-    enYuksekAcilanPuan: 100, // Katlamalı Seri barajı (Min 101)
+    enYuksekAcilanPuan: 100,
     oyunBasladi: false,
     tasCekildiMi: false
 };
@@ -146,7 +146,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // SERİ PER AÇMA
     socket.on('seriAc', ({ pIdx, perGruplari }) => {
         if (pIdx !== gameState.aktifOyuncu) return;
         let oyuncu = gameState.oyuncular[pIdx];
@@ -196,7 +195,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ÇİFT AÇMA (MIN 5 ÇİFT)
     socket.on('ciftAc', ({ pIdx, ciftGruplari }) => {
         if (pIdx !== gameState.aktifOyuncu) return;
         let oyuncu = gameState.oyuncular[pIdx];
