@@ -9,7 +9,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: manipulation; }
         body { background: #0b2b0b; color: white; display: flex; flex-direction: column; min-height: 100vh; height: 100vh; overflow: hidden; }
 
-        /* Ana Masa Mobil Düzeni */
+        /* Masa Alanı */
         .masa-container { flex: 1; display: flex; flex-direction: column; padding: 5px; gap: 5px; height: 100vh; justify-content: space-between; }
         
         /* Rakipler */
@@ -21,7 +21,7 @@
         .orta-masa { display: flex; justify-content: space-around; align-items: center; background: #133a13; border: 2px solid #081c08; border-radius: 10px; padding: 6px; flex-wrap: wrap; gap: 5px; }
         .deste-alan, .gosterge-alan, .atilan-alan { background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 6px; text-align: center; font-size: 11px; }
         
-        /* MOBİL UYUMLU AHŞAP ISTAKA */
+        /* GERÇEK ISTAKA TASARIMI */
         .oyuncu-alan { background: #2c1a0e; border-top: 3px solid #1a0f08; padding: 6px; border-radius: 10px 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
         .istaka-kontrol { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; }
         
@@ -29,35 +29,34 @@
             background: linear-gradient(180deg, #4a2c17 0%, #341e0f 100%);
             border: 3px solid #221309;
             border-radius: 6px;
-            padding: 4px 2px;
+            padding: 4px;
             display: flex;
             flex-direction: column;
             gap: 4px;
             width: 100%;
+            overflow-x: auto;
         }
 
         .istaka-satir {
             display: flex;
             gap: 2px;
-            justify-content: space-between;
+            justify-content: flex-start;
             background: #231309;
             padding: 2px;
             border-radius: 4px;
-            width: 100%;
+            min-width: 100%;
         }
 
-        /* Esnek Taş Yuvası (Mobil Ekranına Otomatik Sığar) */
+        /* Taş Yuvası (Bitişik Ve Sabit Genişlik) */
         .yuva {
-            flex: 1;
-            max-width: 6.5vw;
-            height: 11vw;
-            max-height: 52px;
-            min-height: 38px;
-            border: 1px dashed rgba(255,255,255,0.15);
+            width: 32px;
+            height: 46px;
+            border: 1px dashed rgba(255,255,255,0.1);
             border-radius: 3px;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         /* TAŞ TASARIMI */
@@ -71,7 +70,7 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: calc(10px + 1vw);
+            font-size: 15px;
             cursor: pointer;
             user-select: none;
             box-shadow: 0 1px 3px rgba(0,0,0,0.5);
@@ -84,14 +83,14 @@
         .sari { color: #f57f17; }
         .sahte { color: #8e24aa; }
 
-        /* Mobil Butonlar */
+        /* Butonlar */
         button { background: #ffb300; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; color: #222; font-size: 11px; }
         button:hover { background: #ffa000; }
         .btn-aksiyon { background: #4caf50; color: white; }
         .btn-diz { background: #0288d1; color: white; }
 
         @media (min-width: 600px) {
-            .yuva { max-width: 38px; height: 50px; }
+            .yuva { width: 38px; height: 52px; }
             .tas { font-size: 18px; }
             button { font-size: 13px; padding: 6px 12px; }
         }
@@ -135,8 +134,8 @@
                 <span id="benim-puan" style="margin-left: 5px; font-size: 10px;">Puan: 0</span>
             </div>
             <div>
-                <button class="btn-diz" onclick="seriDiz()">Seri</button>
-                <button class="btn-diz" onclick="ciftDiz()">Çift</button>
+                <button class="btn-diz" onclick="seriDiz()">Seri Diz</button>
+                <button class="btn-diz" onclick="ciftDiz()">Çift Diz</button>
                 <button class="btn-aksiyon" onclick="seriAc()">Per Aç</button>
                 <button class="btn-aksiyon" style="background:#d32f2f;" onclick="tasAt()">Taş At</button>
             </div>
@@ -297,26 +296,61 @@
         ekraniGuncelle();
     }
 
+    /* AKILLI SERİ DİZ (PERLERE AYIRIP ARALARINA 1 BOŞLUK KOYAR) */
     function seriDiz() {
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
         const renkSira = { 'kirmizi': 1, 'siyah': 2, 'mavi': 3, 'sari': 4, 'sahte': 5 };
+        
+        // Önce renk ve sayıya göre sırala
         taslar.sort((a, b) => {
             if (renkSira[a.renk] !== renkSira[b.renk]) return renkSira[a.renk] - renkSira[b.renk];
             return a.sayi - b.sayi;
         });
+
         localIstaka = new Array(30).fill(null);
-        taslar.forEach((t, idx) => localIstaka[idx] = t);
+        let currentSlot = 0;
+
+        for (let i = 0; i < taslar.length; i++) {
+            if (currentSlot >= 30) break;
+            let current = taslar[i];
+            let prev = taslar[i - 1];
+
+            // Eğer önceki taşla aynı renk değilse veya sayı sırası bozulmuşsa (per bittiyse) 1 boşluk bırak
+            if (prev) {
+                let ayniRenk = current.renk === prev.renk;
+                let ardisik = current.sayi === prev.sayi + 1;
+                let ayniSayiFarkliRenk = current.sayi === prev.sayi && current.renk !== prev.renk;
+
+                if (!((ayniRenk && ardisik) || ayniSayiFarkliRenk)) {
+                    currentSlot++; // PER ARASI BOŞLUĞU
+                }
+            }
+
+            if (currentSlot < 30) {
+                localIstaka[currentSlot] = current;
+                currentSlot++;
+            }
+        }
         seciliIndices = [];
         ekraniGuncelle();
     }
 
+    /* AKILLI ÇİFT DİZ */
     function ciftDiz() {
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
         taslar.sort((a, b) => a.sayi - b.sayi);
+
         localIstaka = new Array(30).fill(null);
-        taslar.forEach((t, idx) => localIstaka[idx * 2 < 30 ? idx * 2 : idx] = t);
+        let currentSlot = 0;
+        
+        for (let i = 0; i < taslar.length; i++) {
+            if (currentSlot >= 30) break;
+            localIstaka[currentSlot] = taslar[i];
+            if (i % 2 === 1) currentSlot += 2; // Çiftlerin arasına 1 boşluk koy
+            else currentSlot += 1;
+        }
         seciliIndices = [];
         ekraniGuncelle();
     }
