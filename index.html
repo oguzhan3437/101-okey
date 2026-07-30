@@ -3,21 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3 Kişilik 101 Okey Plus</title>
+    <title>3 Kişilik 101 Okey Plus (Katlamalı & Cezalı)</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: manipulation; }
         body { background: #0a1f0a; color: white; display: flex; flex-direction: column; min-height: 100vh; height: 100vh; overflow: hidden; }
 
         .masa-container { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 8px; 
-            gap: 8px; 
-            height: 100vh; 
-            justify-content: space-between; 
-            background: radial-gradient(circle, #1e5c1e 0%, #0d2b0d 70%, #051405 100%); 
+            flex: 1; display: flex; flex-direction: column; padding: 8px; gap: 8px; height: 100vh; 
+            justify-content: space-between; background: radial-gradient(circle, #1e5c1e 0%, #0d2b0d 70%, #051405 100%); 
             box-shadow: inset 0 0 80px rgba(0,0,0,0.8);
         }
         
@@ -26,7 +20,7 @@
         .rakip-kutu.aktif { border: 2px solid #ffeb3b; box-shadow: 0 0 12px #ffeb3b; background: rgba(30, 77, 30, 0.9); }
 
         .orta-masa { display: flex; justify-content: space-around; align-items: center; background: rgba(0,0,0,0.35); border: 2px solid #143d14; border-radius: 15px; padding: 10px; flex-wrap: wrap; gap: 8px; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
-        .deste-alan, .gosterge-alan, .atilan-alan { background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 8px; text-align: center; font-size: 11px; border: 1px solid rgba(255, 179, 0, 0.3); }
+        .deste-alan, .gosterge-alan, .atilan-alan, .baraj-alan { background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 8px; text-align: center; font-size: 11px; border: 1px solid rgba(255, 179, 0, 0.3); }
         
         .oyuncu-alan { background: #180d05; border-top: 3px solid #ffb300; padding: 8px; border-radius: 12px 12px 0 0; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 -5px 20px rgba(0,0,0,0.7); }
         .istaka-kontrol { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; }
@@ -40,123 +34,39 @@
 
         .ahsap-istaka {
             background: linear-gradient(180deg, #5c3417 0%, #3d220f 40%, #29160a 100%);
-            border: 4px solid #1a0d05;
-            border-radius: 10px;
-            padding: 6px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex: 1;
-            overflow-x: auto;
+            border: 4px solid #1a0d05; border-radius: 10px; padding: 6px; display: flex;
+            flex-direction: column; gap: 6px; flex: 1; overflow-x: auto;
             box-shadow: inset 0 2px 5px rgba(255,255,255,0.1), 0 5px 15px rgba(0,0,0,0.6);
         }
 
-        .istaka-satir {
-            display: flex;
-            gap: 4px;
-            justify-content: flex-start;
-            background: #140a04;
-            padding: 5px;
-            border-radius: 6px;
-            min-width: 620px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
-        }
-
-        .yuva {
-            width: 36px;
-            height: 52px;
-            border: 1px dashed rgba(255,255,255,0.08);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
+        .istaka-satir { display: flex; gap: 4px; justify-content: flex-start; background: #140a04; padding: 5px; border-radius: 6px; min-width: 620px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
+        .yuva { width: 36px; height: 52px; border: 1px dashed rgba(255,255,255,0.08); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
         .tas {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(180deg, #ffffff 0%, #f4ebd9 80%, #e0d0b3 100%);
-            border-radius: 5px;
-            border-bottom: 3px solid #b39b6e;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 17px;
-            cursor: pointer;
-            user-select: none;
-            box-shadow: 0 3px 5px rgba(0,0,0,0.5);
-            position: relative;
-            transition: transform 0.15s ease;
+            width: 100%; height: 100%; background: linear-gradient(180deg, #ffffff 0%, #f4ebd9 80%, #e0d0b3 100%);
+            border-radius: 5px; border-bottom: 3px solid #b39b6e; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; font-weight: bold; font-size: 17px; cursor: pointer;
+            user-select: none; box-shadow: 0 3px 5px rgba(0,0,0,0.5); position: relative; transition: transform 0.15s ease;
         }
-        
-        .tas.cevrili {
-            background: linear-gradient(180deg, #991b1b 0%, #660f0f 100%) !important;
-            border: 1px solid #400808 !important;
-            border-bottom: 3px solid #2b0303 !important;
-            color: transparent !important;
-        }
-        .tas.cevrili * { display: none !important; }
 
         .tas.secili { transform: translateY(-8px); border: 2px solid #ff6f00; background: #fffde7; }
         
-        .okey-rozeti {
-            position: absolute;
-            top: 1px;
-            right: 1px;
-            font-size: 7px;
-            background: #d32f2f;
-            color: #ffeb3b;
-            padding: 1px 2px;
-            border-radius: 2px;
-            font-weight: bold;
-            line-height: 1;
-        }
+        .okey-rozeti { position: absolute; top: 1px; right: 1px; font-size: 7px; background: #d32f2f; color: #ffeb3b; padding: 1px 2px; border-radius: 2px; font-weight: bold; line-height: 1; }
 
-        .kirmizi { color: #d32f2f; }
-        .siyah { color: #111; }
-        .mavi { color: #1976d2; }
-        .sari { color: #f57f17; }
-        .sahte { color: #7b1fa2; }
+        .kirmizi { color: #d32f2f; } .siyah { color: #111; } .mavi { color: #1976d2; } .sari { color: #f57f17; } .sahte { color: #7b1fa2; }
 
         .sag-tas-atma-alani {
-            width: 80px;
-            height: 118px;
-            background: linear-gradient(180deg, #b71c1c 0%, #680a0a 100%);
-            border: 2px dashed #ffeb3b;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-size: 11px;
-            font-weight: bold;
-            color: #fff;
-            cursor: pointer;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.5);
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-        }
-
-        .sag-tas-atma-alani.hover {
-            background: linear-gradient(180deg, #e53935 0%, #8e0000 100%);
-            transform: scale(1.05);
-            border-style: solid;
+            width: 80px; height: 118px; background: linear-gradient(180deg, #b71c1c 0%, #680a0a 100%);
+            border: 2px dashed #ffeb3b; border-radius: 10px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center; font-size: 11px; font-weight: bold;
+            color: #fff; cursor: pointer; box-shadow: inset 0 0 10px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.5);
+            transition: all 0.2s ease; flex-shrink: 0;
         }
 
         button { background: #ffb300; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #111; font-size: 11px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         button:hover { background: #ffa000; }
         .btn-aksiyon { background: #4caf50; color: white; }
         .btn-diz { background: #0288d1; color: white; }
-
-        @media (min-width: 600px) {
-            .yuva { width: 40px; height: 56px; }
-            .tas { font-size: 19px; }
-            button { font-size: 12px; }
-        }
     </style>
 </head>
 <body>
@@ -176,14 +86,19 @@
             <div id="okey-tas"></div>
         </div>
 
-        <div class="atilan-alan" id="yere-at-alani" ondragover="allowDrop(event)" ondrop="dropToTrash(event)">
+        <div class="baraj-alan">
+            <small>AÇMA BARAJI</small>
+            <div id="baraj-puan" style="font-size: 16px; font-weight: bold; color: #4caf50;">101</div>
+        </div>
+
+        <div class="atilan-alan" id="yere-at-alani">
             <small>Son Atılan</small>
             <div id="son-atilan-tas"></div>
             <button id="btn-yandan-al" style="display:none; margin-top:2px;" onclick="yandanTasAl()">Yandan Al</button>
         </div>
 
         <div>
-            <button onclick="socket.emit('oyunuBaslat')">Eli Başlat</button>
+            <button onclick="socket.emit('oyunuBaslat')">Eli Başlat (3 Kişi)</button>
         </div>
     </div>
 
@@ -191,7 +106,7 @@
         <div class="istaka-kontrol">
             <div class="puan-paneli">
                 <span id="benim-bilgi" style="font-weight: bold; color: #ffeb3b;">Oyuncu</span>
-                <span id="el-toplam-bilgi" class="plus-badge">El Sayısı: 0</span>
+                <span id="ceza-bilgi" class="plus-badge" style="color:#ff5252;">Ceza: 0</span>
                 <span id="secili-puan-bilgi" class="secili-badge">Açılan Per: 0</span>
             </div>
             <div>
@@ -208,14 +123,9 @@
                 <div class="istaka-satir" id="alt-satir"></div>
             </div>
 
-            <div class="sag-tas-atma-alani" id="sag-tas-atma" 
-                 ondragover="allowDrop(event)" 
-                 ondragleave="dragLeaveSagAtma(event)" 
-                 ondrop="dropToSagAtma(event)" 
-                 onclick="tasAt()">
+            <div class="sag-tas-atma-alani" onclick="tasAt()">
                 <span style="font-size: 18px;">📥</span>
                 <span>TAŞ AT</span>
-                <small style="font-size:9px; font-weight:normal; opacity:0.8; margin-top:3px;">Sürükle/Tıkla</small>
             </div>
         </div>
     </div>
@@ -225,7 +135,6 @@
     const socket = io();
     let benimKoltugum = -1;
     let seciliIndices = [];
-    let cevriliTaslar = [];
     let state = null;
     let localIstaka = new Array(36).fill(null);
     let yandanTasAldiMi = false;
@@ -234,17 +143,13 @@
         const ust = document.getElementById('ust-satir');
         const alt = document.getElementById('alt-satir');
         ust.innerHTML = ''; alt.innerHTML = '';
-
         for (let i = 0; i < 18; i++) ust.appendChild(createSlot(i));
         for (let i = 18; i < 36; i++) alt.appendChild(createSlot(i));
     }
 
     function createSlot(index) {
         let slot = document.createElement('div');
-        slot.className = 'yuva';
-        slot.dataset.index = index;
-        slot.ondragover = allowDrop;
-        slot.ondrop = dropToSlot;
+        slot.className = 'yuva'; slot.dataset.index = index;
         return slot;
     }
 
@@ -254,6 +159,10 @@
     });
 
     socket.on('bildirim', (msg) => alert(msg));
+
+    socket.on('yandanTasAldiBildir', () => {
+        yandanTasAldiMi = true;
+    });
 
     socket.on('stateUpdate', (newState) => {
         state = newState;
@@ -270,15 +179,11 @@
         for (let i = 0; i < 36; i++) {
             if (localIstaka[i]) {
                 let foundIdx = tempServer.findIndex(t => t.id === localIstaka[i].id);
-                if (foundIdx !== -1) {
-                    newLocal[i] = tempServer.splice(foundIdx, 1)[0];
-                }
+                if (foundIdx !== -1) newLocal[i] = tempServer.splice(foundIdx, 1)[0];
             }
         }
         for (let i = 0; i < 36; i++) {
-            if (!newLocal[i] && tempServer.length > 0) {
-                newLocal[i] = tempServer.shift();
-            }
+            if (!newLocal[i] && tempServer.length > 0) newLocal[i] = tempServer.shift();
         }
         localIstaka = newLocal;
     }
@@ -295,7 +200,6 @@
     }
 
     function yandanTasAl() {
-        yandanTasAldiMi = true;
         socket.emit('yandanTasAl', benimKoltugum);
     }
 
@@ -303,8 +207,10 @@
         if (!state) return;
 
         document.getElementById('kalan-tas').innerText = state.deste.length;
+        document.getElementById('baraj-puan').innerText = state.enYuksekAcilanPuan + 1;
+
         if (state.okey) {
-            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}" style="width:30px; height:44px;">${state.okey.sayi === 0 ? 'J' : state.okey.sayi}</div>`;
+            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}" style="width:30px; height:44px;">${state.okey.sayi}</div>`;
         }
 
         if (state.sonAtilanTas) {
@@ -319,8 +225,10 @@
             if (idx !== benimKoltugum) {
                 let rDiv = document.createElement('div');
                 rDiv.className = `rakip-kutu ${idx === state.aktifOyuncu ? 'aktif' : ''}`;
-                rDiv.innerHTML = `<strong>${o.isim}</strong><br><small style="color:#ffeb3b;">Taş: ${o.taslar.length}</small>`;
+                rDiv.innerHTML = `<strong>${o.isim}</strong><br><small style="color:#ffeb3b;">Taş: ${o.taslar.length} | Ceza: ${o.ceza}</small>`;
                 rakiplerDiv.appendChild(rDiv);
+            } else {
+                document.getElementById('ceza-bilgi').innerText = `Ceza: ${o.ceza}`;
             }
         });
 
@@ -328,207 +236,21 @@
         document.getElementById('btn-tas-cek').style.display = (siraBende && !state.tasCekildiMi) ? 'inline-block' : 'none';
         document.getElementById('btn-yandan-al').style.display = (siraBende && !state.tasCekildiMi && state.sonAtilanTas) ? 'inline-block' : 'none';
 
-        puanlariHesapla();
-
         for (let i = 0; i < 36; i++) {
             let slot = document.querySelector(`.yuva[data-index="${i}"]`);
             slot.innerHTML = '';
             let t = localIstaka[i];
             if (t) {
-                let isCevrili = cevriliTaslar.includes(t.id);
                 let tDiv = document.createElement('div');
-                tDiv.className = `tas ${t.renk} ${seciliIndices.includes(t.id) ? 'secili' : ''} ${isCevrili ? 'cevrili' : ''}`;
+                tDiv.className = `tas ${t.renk} ${seciliIndices.includes(t.id) ? 'secili' : ''}`;
                 
                 let okeyMi = isOkey(t);
                 let htmlContent = t.sayi === 0 ? 'J' : t.sayi;
                 if (okeyMi) htmlContent += `<span class="okey-rozeti">★OKEY</span>`;
                 tDiv.innerHTML = htmlContent;
-
-                tDiv.draggable = true;
-                tDiv.ondragstart = (e) => dragStart(e, i);
                 tDiv.onclick = () => tasSec(t.id);
-                tDiv.ondblclick = () => tasCevir(t.id);
-                
                 slot.appendChild(tDiv);
             }
-        }
-    }
-
-    function getIstakaGruplari() {
-        let gruplar = [];
-        let mevcutGrup = [];
-
-        for (let i = 0; i < 36; i++) {
-            if (i === 18 && mevcutGrup.length > 0) {
-                gruplar.push(mevcutGrup);
-                mevcutGrup = [];
-            }
-
-            if (localIstaka[i] !== null) {
-                mevcutGrup.push(localIstaka[i]);
-            } else {
-                if (mevcutGrup.length > 0) {
-                    gruplar.push(mevcutGrup);
-                    mevcutGrup = [];
-                }
-            }
-        }
-        if (mevcutGrup.length > 0) gruplar.push(mevcutGrup);
-
-        return gruplar;
-    }
-
-    // TAM ESNEK OKEY/JOKER DESTEKLİ PER KONTROLÜ
-    function isGecerliPer(grup) {
-        if (!grup || grup.length < 3) return false;
-
-        let normalTaslar = grup.filter(t => !isOkey(t));
-        
-        // Gruptaki tüm taşlar Okey ise otomatik olarak geçerli gruptur
-        if (normalTaslar.length === 0) return true;
-
-        // 1. KONTROL: GRUP (Farklı Renkler, Aynı Sayı)
-        let hedefSayi = normalTaslar[0].sayi;
-        let hepsiAyniSayi = normalTaslar.every(t => t.sayi === hedefSayi);
-
-        if (hepsiAyniSayi) {
-            let renkler = normalTaslar.map(t => t.renk);
-            let benzersizRenkler = new Set(renkler);
-            if (benzersizRenkler.size === normalTaslar.length && grup.length <= 4) {
-                return true;
-            }
-        }
-
-        // 2. KONTROL: SERİ (Aynı Renk, Ardışık Sıralama)
-        let hedefRenk = normalTaslar[0].renk;
-        let hepsiAyniRenk = normalTaslar.every(t => t.renk === hedefRenk);
-
-        if (hepsiAyniRenk) {
-            let sayilar = normalTaslar.map(t => t.sayi).sort((a, b) => a - b);
-            
-            // 13 -> 1 Bağlanma Özel Durumu
-            if (sayilar.includes(13) && sayilar.includes(1)) {
-                sayilar = sayilar.map(s => s === 1 ? 14 : s).sort((a, b) => a - b);
-            }
-
-            let minSayi = sayilar[0];
-            let maxSayi = sayilar[sayilar.length - 1];
-            let fark = maxSayi - minSayi;
-
-            // Okey/Joker taşları boşlukları kapatabildiği için aralık grup boyutuna sığıyorsa geçerlidir
-            if (fark < grup.length) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function getTasPuan(t) {
-        if (!t) return 0;
-        if (t.sayi === 0 && state && state.okey) return state.okey.sayi;
-        return t.sayi;
-    }
-
-    function puanlariHesapla() {
-        if (benimKoltugum === -1 || !state || !state.oyuncular[benimKoltugum]) return;
-        let benimTaslar = state.oyuncular[benimKoltugum].taslar;
-        
-        let elToplam = 0;
-        benimTaslar.forEach(t => elToplam += getTasPuan(t));
-        document.getElementById('el-toplam-bilgi').innerText = `El Sayısı: ${elToplam}`;
-
-        let toplamPerPuani = 0;
-
-        if (seciliIndices.length > 0) {
-            let seciliTaslar = seciliIndices.map(id => benimTaslar.find(x => x.id === id)).filter(Boolean);
-            if (isGecerliPer(seciliTaslar)) {
-                seciliTaslar.forEach(t => toplamPerPuani += getTasPuan(t));
-            }
-        } else {
-            let gruplar = getIstakaGruplari();
-            gruplar.forEach(grup => {
-                if (isGecerliPer(grup)) {
-                    grup.forEach(t => toplamPerPuani += getTasPuan(t));
-                }
-            });
-        }
-
-        let seciliElem = document.getElementById('secili-puan-bilgi');
-        seciliElem.innerText = `Açılan Per: ${toplamPerPuani}`;
-        if (toplamPerPuani >= 101) {
-            seciliElem.classList.add('hazir');
-        } else {
-            seciliElem.classList.remove('hazir');
-        }
-    }
-
-    function tasCevir(tasId) {
-        let idx = cevriliTaslar.indexOf(tasId);
-        if (idx === -1) cevriliTaslar.push(tasId);
-        else cevriliTaslar.splice(idx, 1);
-        ekraniGuncelle();
-    }
-
-    function allowDrop(e) { 
-        e.preventDefault(); 
-        if (e.currentTarget.id === "sag-tas-atma") {
-            e.currentTarget.classList.add('hover');
-        }
-    }
-
-    function dragLeaveSagAtma(e) {
-        e.currentTarget.classList.remove('hover');
-    }
-
-    function dragStart(e, fromSlotIndex) { e.dataTransfer.setData("fromSlot", fromSlotIndex); }
-
-    function dropToSlot(e) {
-        e.preventDefault();
-        let fromSlot = e.dataTransfer.getData("fromSlot");
-        let toSlot = e.currentTarget.dataset.index;
-        if (fromSlot !== "" && fromSlot !== toSlot) {
-            let temp = localIstaka[fromSlot];
-            localIstaka[fromSlot] = localIstaka[toSlot];
-            localIstaka[toSlot] = temp;
-            ekraniGuncelle();
-        }
-    }
-
-    function dropToSagAtma(e) {
-        e.preventDefault();
-        e.currentTarget.classList.remove('hover');
-        let fromSlot = e.dataTransfer.getData("fromSlot");
-        if (fromSlot !== "") {
-            let tas = localIstaka[fromSlot];
-            if (tas) {
-                tasIstakaIslemAt(tas.id);
-            }
-        }
-    }
-
-    function dropToTrash(e) {
-        e.preventDefault();
-        let fromSlot = e.dataTransfer.getData("fromSlot");
-        if (fromSlot !== "") {
-            let tas = localIstaka[fromSlot];
-            if (tas) {
-                tasIstakaIslemAt(tas.id);
-            }
-        }
-    }
-
-    function tasIstakaIslemAt(tasId) {
-        if (yandanTasAldiMi) {
-            alert("Yandan (yerden) aldığın taşı per açmadan doğrudan atamazsın!");
-            return;
-        }
-
-        let realIndex = state.oyuncular[benimKoltugum].taslar.findIndex(t => t.id === tasId);
-        if (realIndex !== -1) {
-            socket.emit('tasAt', { pIdx: benimKoltugum, tasIndex: realIndex });
-            seciliIndices = [];
-            yandanTasAldiMi = false;
         }
     }
 
@@ -539,39 +261,45 @@
         ekraniGuncelle();
     }
 
+    function perAc() {
+        if (seciliIndices.length < 3) {
+            alert("Lütfen açmak istediğin per için en az 3 taş seç!");
+            return;
+        }
+
+        let acilacakIndices = seciliIndices.map(id => state.oyuncular[benimKoltugum].taslar.findIndex(t => t.id === id));
+        socket.emit('seriAc', { pIdx: benimKoltugum, seciliIndices: acilacakIndices });
+        seciliIndices = [];
+    }
+
+    function tasAt() {
+        if (seciliIndices.length !== 1) { 
+            alert("Taş atmak için ıstakandan sadece 1 taş seçmelisin!"); 
+            return; 
+        }
+
+        // Yandan Taş Alıp Per Açamadan Taş Atma Cezası
+        if (yandanTasAldiMi && !state.oyuncular[benimKoltugum].elAcaliMi) {
+            socket.emit('yandanTasCezasiYaz', { pIdx: benimKoltugum });
+        }
+
+        let tasId = seciliIndices[0];
+        let realIndex = state.oyuncular[benimKoltugum].taslar.findIndex(t => t.id === tasId);
+        
+        if (realIndex !== -1) {
+            socket.emit('tasAt', { pIdx: benimKoltugum, tasIndex: realIndex });
+            seciliIndices = [];
+            yandanTasAldiMi = false;
+        }
+    }
+
     function seriDiz() {
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
         const renkSira = { 'kirmizi': 1, 'siyah': 2, 'mavi': 3, 'sari': 4, 'sahte': 5 };
-        
-        taslar.sort((a, b) => {
-            if (renkSira[a.renk] !== renkSira[b.renk]) return renkSira[a.renk] - renkSira[b.renk];
-            return a.sayi - b.sayi;
-        });
-
+        taslar.sort((a, b) => (renkSira[a.renk] !== renkSira[b.renk]) ? renkSira[a.renk] - renkSira[b.renk] : a.sayi - b.sayi);
         localIstaka = new Array(36).fill(null);
-        let currentSlot = 0;
-
-        for (let i = 0; i < taslar.length; i++) {
-            if (currentSlot >= 36) break;
-            let current = taslar[i];
-            let prev = taslar[i - 1];
-
-            if (prev) {
-                let ayniRenk = current.renk === prev.renk;
-                let ardisik = current.sayi === prev.sayi + 1;
-                let ayniSayiFarkliRenk = current.sayi === prev.sayi && current.renk !== prev.renk;
-
-                if (!((ayniRenk && ardisik) || ayniSayiFarkliRenk)) {
-                    currentSlot++;
-                }
-            }
-
-            if (currentSlot < 36) {
-                localIstaka[currentSlot] = current;
-                currentSlot++;
-            }
-        }
+        taslar.forEach((t, i) => localIstaka[i] = t);
         seciliIndices = [];
         ekraniGuncelle();
     }
@@ -580,57 +308,10 @@
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
         taslar.sort((a, b) => a.sayi - b.sayi);
-
         localIstaka = new Array(36).fill(null);
-        let currentSlot = 0;
-        
-        for (let i = 0; i < taslar.length; i++) {
-            if (currentSlot >= 36) break;
-            localIstaka[currentSlot] = taslar[i];
-            if (i % 2 === 1) currentSlot += 2;
-            else currentSlot += 1;
-        }
+        taslar.forEach((t, i) => localIstaka[i] = t);
         seciliIndices = [];
         ekraniGuncelle();
-    }
-
-    function tasAt() {
-        if (seciliIndices.length !== 1) { 
-            alert("Taş atmak için ıstakadan 1 taş seç veya taşı sağdaki 'TAŞ AT' kutusuna sürükle!"); 
-            return; 
-        }
-        let tasId = seciliIndices[0];
-        tasIstakaIslemAt(tasId);
-    }
-
-    // ARADA GEÇERSİZ TAŞLAR OLSA BİLE GEÇERLİ PERLERİ AYIKLAYIP AÇAN FONKSİYON
-    function perAc() {
-        let acilacakTaslar = [];
-
-        if (seciliIndices.length > 0) {
-            acilacakTaslar = seciliIndices.map(id => state.oyuncular[benimKoltugum].taslar.findIndex(t => t.id === id));
-        } else {
-            let gruplar = getIstakaGruplari();
-            gruplar.forEach(grup => {
-                if (isGecerliPer(grup)) {
-                    grup.forEach(t => {
-                        let idx = state.oyuncular[benimKoltugum].taslar.findIndex(x => x.id === t.id);
-                        if (idx !== -1 && !acilacakTaslar.includes(idx)) {
-                            acilacakTaslar.push(idx);
-                        }
-                    });
-                }
-            });
-        }
-
-        if (acilacakTaslar.length < 3) {
-            alert("Açılacak geçerli bir per bulunamadı!");
-            return;
-        }
-
-        socket.emit('seriAc', { pIdx: benimKoltugum, seciliIndices: acilacakTaslar });
-        seciliIndices = [];
-        yandanTasAldiMi = false;
     }
 
     istakaInit();
