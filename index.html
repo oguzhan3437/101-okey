@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
+<!DOCTYPE html><html lang="tr"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>101 Okey Plus - Genel Per ve Çift Motoru</title>
@@ -44,11 +42,7 @@
 
         .sag-tas-atma { width: 65px; height: 90px; background: #7f1d1d; border: 2px dashed #ffeb3b; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; cursor: pointer; text-align: center; }
         button { background: #ffb300; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px; }
-    </style>
-</head>
-<body>
-
-<div class="masa-container">
+    </style></head><body><div class="masa-container">
     <div class="rakipler-alan" id="rakipler-alan"></div>
 
     <div class="masadaki-perler-container">
@@ -93,10 +87,7 @@
             </div>
             <div class="sag-tas-atma" onclick="tasAt()">📥<br>TAŞ AT</div>
         </div>
-    </div>
-</div>
-
-<script>
+    </div></div><script>
     const socket = io();
     let benimKoltugum = -1;
     let seciliAtilacakTasId = null;
@@ -164,10 +155,44 @@
         return tas.sayi === 0 || isOkey(tas);
     }
 
-    function getTasPuan(tas) {
-        if (!tas) return 0;
-        if (isJoker(tas)) return state.okey ? state.okey.sayi : 10;
-        return tas.sayi;
+    // DİNAMİK OKEY PUAN HESAPLAMA MOTORU (Düzeltilen Kısım)
+    function getPerPuan(grup) {
+        if (!grup || grup.length === 0) return 0;
+
+        let normal = grup.filter(t => !isJoker(t));
+        if (normal.length === 0) {
+            return grup.length * (state && state.okey ? state.okey.sayi : 10);
+        }
+
+        let ilkSayi = normal[0].sayi;
+        let hepsiAyniSayi = normal.every(t => t.sayi === ilkSayi);
+
+        // KONTROL 1: GRUP PER (Farklı renk aynı sayı: Örn 7-7-OKEY) -> Okey gruptaki sayıyı (7) alır.
+        if (hepsiAyniSayi) {
+            return grup.length * ilkSayi;
+        }
+
+        // KONTROL 2: SERİ PER (Aynı renk ardışık: Örn OKEY-11-12 veya 11-12-OKEY)
+        let bilinenIdx = grup.findIndex(t => !isJoker(t));
+        let bilinenSayi = grup[bilinenIdx].sayi;
+        let baslangicSayisi = bilinenSayi - bilinenIdx;
+
+        let toplamPuan = 0;
+        for (let i = 0; i < grup.length; i++) {
+            if (!isJoker(grup[i])) {
+                toplamPuan += grup[i].sayi;
+            } else {
+                let okeyDegeri = baslangicSayisi + i;
+
+                // 12-13-1 Serisinde Okey sonda ise (14'e denk geliyorsa) 1 puan alır.
+                if (okeyDegeri === 14) {
+                    okeyDegeri = 1;
+                }
+
+                toplamPuan += okeyDegeri;
+            }
+        }
+        return toplamPuan;
     }
 
     // EVRENSEL VE BÜTÜN PERLER İÇİN GEÇERLİ PER MOTORU
@@ -189,19 +214,13 @@
         // KONTROL 2: SERİ PER (Aynı renk, ardışık sayılar. Örn: Mavi 4 - OKEY - Mavi 6 - Mavi 7)
         let ilkRenk = normal[0].renk;
         if (normal.every(t => t.renk === ilkRenk)) {
-            // Jokerleri yerleştireceğimiz sanal sayı dizisi oluşturalım
             let sayilar = grup.map(t => isJoker(t) ? null : t.sayi);
             
-            // Sıralı boşluk kontrolü
-            let basarilimi = true;
-            let referansSayi = null;
-
-            // İlk sayı değeri bilinen taşın konumunu bul
             let bilinenIdx = sayilar.findIndex(s => s !== null);
             if (bilinenIdx === -1) return true;
 
-            // Baştan sona beklenen sayıları simüle et
             let baslangicSayisi = sayilar[bilinenIdx] - bilinenIdx;
+            let basarilimi = true;
 
             for (let i = 0; i < sayilar.length; i++) {
                 let beklenen = baslangicSayisi + i;
@@ -255,7 +274,7 @@
         let toplamPuan = 0;
 
         perler.forEach(grup => {
-            grup.forEach(t => toplamPuan += getTasPuan(t));
+            toplamPuan += getPerPuan(grup);
         });
 
         document.getElementById('canli-puan').innerText = `Istakadaki Per Puanı: ${toplamPuan}`;
@@ -483,7 +502,4 @@
         ekraniGuncelle();
     }
 
-    istakaInit();
-</script>
-</body>
-</html>
+    istakaInit();</script></body></html>
