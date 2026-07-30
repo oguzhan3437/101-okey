@@ -15,12 +15,18 @@
         .rakip-kutu { background: rgba(18, 51, 18, 0.9); border: 1px solid #2e7d32; padding: 4px 12px; border-radius: 6px; text-align: center; }
         .rakip-kutu.aktif { border: 2px solid #ffeb3b; box-shadow: 0 0 8px #ffeb3b; }
 
-        /* YERE AÇILAN PERLER VE ÇİFTLER ALANI */
-        .masadaki-perler-container { flex: 1; display: flex; gap: 10px; margin: 4px 0; overflow-y: auto; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 6px; }
-        .masada-bolum { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
-        .masada-baslik { font-size: 11px; font-weight: bold; color: #ffb300; border-bottom: 1px solid rgba(255,179,0,0.3); padding-bottom: 2px; }
-        .masada-liste { display: flex; flex-wrap: wrap; gap: 8px; }
+        /* YERE AÇILAN SERİ VE ÇİFT PERLERİN AYRI DİZİLDİĞİ ALAN */
+        .masadaki-perler-container { flex: 1; display: flex; gap: 8px; margin: 4px 0; overflow-y: auto; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 6px; }
+        
+        .masada-seri-bolum { flex: 2; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+        /* ÇİFT BÖLÜMÜ DAHA KÜÇÜK (FLEX: 1) YAPILDI */
+        .masada-cift-bolum { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,179,0,0.2); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; max-width: 300px; }
+        
+        .masada-baslik { font-size: 10px; font-weight: bold; color: #ffb300; border-bottom: 1px solid rgba(255,179,0,0.3); padding-bottom: 2px; }
+        .masada-liste { display: flex; flex-wrap: wrap; gap: 6px; }
+        
         .per-grubu-yeryuzu { display: flex; background: rgba(0,0,0,0.5); padding: 2px; border-radius: 4px; border: 1px solid #4caf50; }
+        .cift-grubu-yeryuzu { display: flex; background: rgba(0,0,0,0.5); padding: 1px; border-radius: 4px; border: 1px solid #0288d1; scale: 0.9; }
 
         .orta-masa { display: flex; justify-content: space-around; align-items: center; background: rgba(0,0,0,0.5); border-radius: 8px; padding: 6px; margin-bottom: 4px; }
         .kutucuk { background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 6px; text-align: center; font-size: 11px; border: 1px solid rgba(255, 179, 0, 0.3); }
@@ -48,13 +54,12 @@
 <div class="masa-container">
     <div class="rakipler-alan" id="rakipler-alan"></div>
 
-    <!-- YERE AÇILAN SERİ VE ÇİFT PERLERİN AYRI DİZİLDİĞİ ALAN -->
     <div class="masadaki-perler-container">
-        <div class="masada-bolum">
+        <div class="masada-seri-bolum">
             <div class="masada-baslik">AÇILAN SERİ PERLER</div>
             <div class="masada-liste" id="masada-seriler"></div>
         </div>
-        <div class="masada-bolum">
+        <div class="masada-cift-bolum">
             <div class="masada-baslik">AÇILAN ÇİFTLER</div>
             <div class="masada-liste" id="masada-ciftler"></div>
         </div>
@@ -187,7 +192,6 @@
         return false;
     }
 
-    // CANLI PUAN HESAPLAMA (SADECE GEÇERLİ PERLERİ TOPLAR)
     function canliPuanHesapla() {
         if (!state || benimKoltugum === -1) return;
         let oyuncuTaslar = state.oyuncular[benimKoltugum].taslar;
@@ -201,9 +205,7 @@
         document.getElementById('canli-puan').innerText = `Seçili Per Puanı: ${toplamPuan}`;
     }
 
-    function dragStart(e, index) {
-        draggedIndex = index;
-    }
+    function dragStart(e, index) { draggedIndex = index; }
 
     function dropTas(e, targetIndex) {
         e.preventDefault();
@@ -226,16 +228,15 @@
         document.getElementById('baraj-puan').innerText = state.enYuksekAcilanPuan + 1;
 
         if (state.okey) {
-            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}" style="width:24px; height:34px; font-size:11px;">${state.okey.sayi}</div>`;
+            document.getElementById('okey-tas').innerHTML = `<div class="tas ${state.okey.renk}" style="width:22px; height:32px; font-size:10px;">${state.okey.sayi}</div>`;
         }
 
         if (state.sonAtilanTas) {
-            document.getElementById('son-atilan-tas').innerHTML = `<div class="tas ${state.sonAtilanTas.renk}" style="width:24px; height:34px; font-size:11px;">${state.sonAtilanTas.sayi === 0 ? 'J' : state.sonAtilanTas.sayi}</div>`;
+            document.getElementById('son-atilan-tas').innerHTML = `<div class="tas ${state.sonAtilanTas.renk}" style="width:22px; height:32px; font-size:10px;">${state.sonAtilanTas.sayi === 0 ? 'J' : state.sonAtilanTas.sayi}</div>`;
         } else {
             document.getElementById('son-atilan-tas').innerHTML = '<small style="color:#aaa;">Yok</small>';
         }
 
-        // YERE AÇILAN SERİ VE ÇİFTLERİ ÇİZ
         let serilerDiv = document.getElementById('masada-seriler');
         let ciftlerDiv = document.getElementById('masada-ciftler');
         serilerDiv.innerHTML = ''; ciftlerDiv.innerHTML = '';
@@ -245,16 +246,16 @@
                 let gDiv = document.createElement('div');
                 gDiv.className = 'per-grubu-yeryuzu';
                 grup.forEach(t => {
-                    gDiv.innerHTML += `<div class="tas ${t.renk}" style="width:22px; height:32px; font-size:10px;">${t.sayi === 0 ? 'J' : t.sayi}</div>`;
+                    gDiv.innerHTML += `<div class="tas ${t.renk}" style="width:20px; height:28px; font-size:9px;">${t.sayi === 0 ? 'J' : t.sayi}</div>`;
                 });
                 serilerDiv.appendChild(gDiv);
             });
 
             o.acilanCiftler.forEach(pair => {
                 let cDiv = document.createElement('div');
-                cDiv.className = 'per-grubu-yeryuzu';
+                cDiv.className = 'cift-grubu-yeryuzu';
                 pair.forEach(t => {
-                    cDiv.innerHTML += `<div class="tas ${t.renk}" style="width:22px; height:32px; font-size:10px;">${t.sayi === 0 ? 'J' : t.sayi}</div>`;
+                    cDiv.innerHTML += `<div class="tas ${t.renk}" style="width:18px; height:26px; font-size:9px;">${t.sayi === 0 ? 'J' : t.sayi}</div>`;
                 });
                 ciftlerDiv.appendChild(cDiv);
             });
@@ -346,18 +347,38 @@
         }
     }
 
+    // SERİ DİZ (PERLER ARASINDA 1 BOŞLUK BIRAKIR)
     function seriDiz() {
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
         const renkSira = { 'kirmizi': 1, 'siyah': 2, 'mavi': 3, 'sari': 4, 'sahte': 5 };
+        
         taslar.sort((a, b) => (renkSira[a.renk] !== renkSira[b.renk]) ? renkSira[a.renk] - renkSira[b.renk] : a.sayi - b.sayi);
-        localIstaka = new Array(36).fill(null);
-        taslar.forEach((t, i) => localIstaka[i] = t);
+
+        let yeniIstaka = new Array(36).fill(null);
+        let cursor = 0;
+
+        for (let i = 0; i < taslar.length; i++) {
+            if (cursor >= 36) break;
+            yeniIstaka[cursor] = taslar[i];
+            
+            // Eğer bir sonraki taş farklı renkse veya ardışık sayı değilse 1 boşluk bırak
+            if (i < taslar.length - 1) {
+                let suanki = taslar[i];
+                let sonraki = taslar[i+1];
+                if (suanki.renk !== sonraki.renk || (sonraki.sayi - suanki.sayi > 1)) {
+                    cursor++; // Boşluk bırak
+                }
+            }
+            cursor++;
+        }
+
+        localIstaka = yeniIstaka;
         seciliIndices = [];
         ekraniGuncelle();
     }
 
-    // SADECE AYNI RENK VE SAYIDAKİ ÇİFTLERİ YAN YANA DİZER
+    // ÇİFT DİZ (ÇİFTLERİN ARASINDA 1 BOŞLUK BIRAKIR)
     function ciftDiz() {
         if (benimKoltugum === -1 || !state) return;
         let taslar = [...state.oyuncular[benimKoltugum].taslar];
@@ -375,16 +396,34 @@
                 }
             }
             if (matchIdx !== -1) {
-                ciftler.push(taslar[i], taslar[matchIdx]);
+                ciftler.push([taslar[i], taslar[matchIdx]]);
                 visited.add(i); visited.add(matchIdx);
             } else {
                 kalanlar.push(taslar[i]);
             }
         }
 
-        let yeniDizilim = [...ciftler, ...kalanlar];
-        localIstaka = new Array(36).fill(null);
-        yeniDizilim.forEach((t, i) => localIstaka[i] = t);
+        let yeniIstaka = new Array(36).fill(null);
+        let cursor = 0;
+
+        // Çiftleri 2'şer dizip aralarına 1 boşluk bırakıyoruz
+        ciftler.forEach(pair => {
+            if (cursor + 1 < 36) {
+                yeniIstaka[cursor] = pair[0];
+                yeniIstaka[cursor + 1] = pair[1];
+                cursor += 3; // 2 Taş + 1 Boşluk
+            }
+        });
+
+        // Kalan tekli taşları en sona diz
+        kalanlar.forEach(t => {
+            if (cursor < 36) {
+                yeniIstaka[cursor] = t;
+                cursor++;
+            }
+        });
+
+        localIstaka = yeniIstaka;
         seciliIndices = [];
         ekraniGuncelle();
     }
